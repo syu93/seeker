@@ -1,0 +1,364 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/google-map/google-map.html">
+<link rel="import" href="../bower_components/google-map/google-map-search.html">
+<link rel="import" href="../bower_components/google-map/google-map-marker.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="my-map">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+
+        min-height: 100vh;
+        background: lightgrey;
+      }
+
+      /* Due to firefox compate forced to use classes */
+      :host([search]) .menu {
+        display: none;
+      }
+
+      :host([search]) .back-menu {
+        display: block;
+      }
+
+      .back-menu {
+        display: none;
+      }
+
+      app-header {
+        color: var(--light-text-color);
+        background-color: rgba(245, 245, 245, 0.8);
+        margin: 16px 16px;
+        overflow: hidden;
+        border-radius: 5px;
+      }
+
+      app-header paper-icon-button {
+        --paper-icon-button-ink-color: grey;
+      }
+
+      app-header-layout,
+      iron-pages {
+        min-height: 100vh;
+        overflow: hidden;
+      }
+
+      section {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 100vh;
+      }
+
+      [main-title] {
+        pointer-events: auto;
+      }
+
+      [main-title] paper-input {
+        width: 100%;
+      }
+
+      #historySearch {
+        padding: 0 16px;
+        position: absolute;
+        top: 100vh;
+        /*top: 0;*/ /* dev purpose */
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 100vh;
+        background: #fff;
+        z-index: 10;
+        box-sizing: border-box;
+
+        transition: transform .1s .1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      }
+
+      #historySearch.display {
+        transform: translate(0, -100vh);
+      }
+
+      #historySearch .scrolling {
+        margin-top: 96px;
+        padding-bottom: 64px;
+        height: 87vh;
+        box-sizing: border-box;
+        overflow-y: scroll;
+      }
+
+      #historySearch .tile {
+        text-decoration: none;
+        color: var(--light-text-color);
+        width: 100%;
+        height: 64px;
+        background: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        border-radius: 5px;
+        box-sizing: border-box;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: flex-start; /* align horizontal */
+        align-items: center; /* align vertical */
+      }
+
+      #historySearch .tile iron-icon {
+        pointer-events: none;
+        margin-right: 16px;
+        min-width: 24px;
+      }
+
+      #historySearch .tile span{
+        pointer-events: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      app-toolbar a {
+        text-decoration: none;
+        color: inherit;
+      }
+    </style>
+
+    <app-route
+      route="{{route}}"
+      pattern="/:longitude/:latitude"
+      data="{{routeData}}"
+      tail="{{subroute}}"></app-route>
+    <iron-ajax
+       auto
+       url="https://freegeoip.net/json/"
+       handle-as="json"
+       last-response="{{userGeoIP}}"></iron-ajax>
+
+    <!-- Main content -->
+    <app-header-layout>
+      <app-header slot="header" condenses reveals effects="waterfall">
+        <app-toolbar>
+          <paper-icon-button class="menu" icon="my-icons:menu" on-tap="toggleDrawer"></paper-icon-button>
+          <a class="back-menu" href="#" on-tap="_hideSuggested"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
+          <div main-title><paper-input
+              type="text"
+              label="Search"
+              name=""
+              value="{{searchTerm}}"
+              placeholder="Where are we going ?"
+              results="5"
+              on-focus="_displaySuggested">
+            </paper-input></div>
+            <paper-icon-button icon="my-icons:clear" on-tap="clear"></paper-icon-button>
+            <a href$="[[_getSearch(searchLng, searchLat, searchTerm)]]"><paper-icon-button icon="my-icons:search"></paper-icon-button></a>
+        </app-toolbar>
+      </app-header>
+
+      <div id="historySearch">
+        <div class="scrolling">
+          <template is="dom-repeat" items={{results}} 
+            as=result index-as=index>
+            <!-- [[_log(result)]] -->
+            <span class="tile" result="[[result]]" on-click="setSearch">
+              <iron-icon icon="my-icons:room"></iron-icon>
+              <span>[[result.formatted_address]]</span>
+            </span>
+          </template>
+        </div>
+      </div>
+
+      <section>
+        <google-map-search
+          map="[[map]]"
+          query="[[searchTerm]]"
+          results="{{results}}">
+        </google-map-search>
+        <google-map
+          map="{{map}}"
+          latitude="[[_converteComma(searchLat)]]"
+          longitude="[[_converteComma(searchLng)]]"
+          zoom="17"
+          disable-default-ui
+          styles="[[_styles]]"
+          additional-map-options="[[_additionalMapOptions]]"
+          api-key="[[_mapApiKey]]">
+          <template is="dom-if" if={{searchTerm}}>
+            <google-map-marker
+              latitude="[[_converteComma(searchLat)]]"
+              longitude="[[_converteComma(searchLng)]]"
+              title="Go Giants!">
+            </google-map-marker>
+          </template>
+
+        </google-map>
+      </section>
+    </app-header-layout>
+  </template>
+
+  <script>
+    class MyMap extends Polymer.Element {
+      static get is() { return 'my-map'; }
+
+      static get properties() {
+        return {
+          search: {
+            type: Boolean,
+            reflectToAttribute: true,
+          },
+          searchTerm: {
+            type: String,
+            value: ""
+          },
+          searchHistory: {
+            type: Array,
+            value: () => {
+              let a = [];
+              for (var i = 0; i < 21; i++) {
+                a.push({formatted_address: `${i} Lorem Ipsum Lorem`, latitude: 1.2 + i, longitude: 1.2});
+              }
+              return a;
+            }
+          },
+          _mapApiKey: {
+            type: String,
+            value: () => {
+              return window.config ? window.config['mapApiKey'] : "";
+            }
+          },
+          _styles: {
+            value: () => {
+              return [
+                // {
+                //   featureType: 'poi.business',
+                //   stylers: [{visibility: 'off'}]
+                // },
+                // {
+                //   elementType: 'labels.icon',
+                //   stylers: [{visibility: 'off'}]
+                // }
+              ]
+            }
+          },
+          _additionalMapOptions: {
+            value: () => {
+              return {gestureHandling: 'greedy'}
+            }
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+        '_routePageChanged(routeData.longitude, routeData.latitude)',
+        ];
+      }
+
+      ready() {
+        super.ready();
+
+        let query = this._getQueryVariable('qry');
+        if (query) {
+          this.set('searchTerm', query);
+        }
+      }
+
+      toggleDrawer() {
+        let event = new Event("toggle-drawer", {
+          bubbles: true,
+          cancelable: false,
+          composed: true
+        });
+        event.detail = {};
+        let node = this;
+        node.dispatchEvent(event);
+      }
+
+      setSearch(e) {
+        console.info("Log : Map selected search", e.target.result);
+        this.set('searchTerm', e.target.result.formatted_address);
+        this.set('searchLng', e.target.result.longitude);
+        this.set('searchLat', e.target.result.latitude);
+      }
+
+      clear(e) {
+        let lng = 37.77493;
+        let lat = -122.41942;
+        if (this.userGeoIP.longitude && this.userGeoIP.latitude) {
+          lng = this.userGeoIP.longitude;
+          lat = this.userGeoIP.latitude;
+        }
+        console.info("Log : Clear selected search");
+        this.set('searchTerm', "");
+        this.set('searchLng', lng);
+        this.set('searchLat', lat);
+      }
+
+      _getQueryVariable(value) {
+        let query = window.location.search.substring(1);
+        let vars = query.split('&');
+        for (let i = 0; i < vars.length; i++) {
+          let pair = vars[i].split('=');
+          if (decodeURIComponent(pair[0]) == value) {
+            return decodeURIComponent(pair[1]);
+          }
+        }
+        console.log('Query variable %s not found', value);
+      }
+
+      _converteComma(value) {
+        return `${value}`.replace(",", ".");
+      }
+
+      _converteDot(value) {
+        return `${value}`.replace(".", ",");
+      }
+
+      _getSearch(searchLng, searchLat, searchTerm) {
+        if (searchLng && searchLat) {
+          return `/map/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}?qry=${searchTerm}`;
+        }
+        return "#";
+      }
+
+      _routePageChanged(longitude, latitude) {
+        this.set('searchLng', longitude);
+        this.set('searchLat', latitude);
+
+        // Close the search result list
+        this._hideSuggested();
+      }
+
+      _log(value) {
+        console.log(value);
+      }
+
+      _displaySuggested() {
+        console.info("Log : Display search history");
+        this.$.historySearch.classList.add('display');
+        this.search = true;
+      }
+
+      _hideSuggested() {
+        console.info("Log : Hide search history");
+        this.$.historySearch.classList.remove('display');
+        this.search = false;
+      }
+    }
+
+    window.customElements.define(MyMap.is, MyMap);
+  </script>
+</dom-module>

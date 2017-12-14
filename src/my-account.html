@@ -1,0 +1,118 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="my-account">
+  <template>
+    <style include="shared-styles">
+    :host {
+      display: block;
+    }
+
+    .back-menu {
+      display: block;
+    }
+
+    app-header {
+      color: var(--light-text-color);
+      background-color: rgba(245, 245, 245, 0.8);
+      background-color: grey;
+      margin: 16px 16px;
+      overflow: hidden;
+      border-radius: 5px;
+    }
+
+    app-header paper-icon-button {
+      --paper-icon-button-ink-color: grey;
+    }
+  </style>
+
+  <div class="card account-info">
+    <h2>
+      <div class="circle" style="vertical-align: middle"></div>
+      <span>Plopman</span>
+    </h2>
+  </div>
+
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+  <div class="card last-ride">
+    <h3>Your last ride</h3>
+    <ul>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+      <li>14 rue de Silly</li>
+    </ul>
+  </div>
+
+</template>
+
+<script>
+  class MyAccount extends Polymer.Element {
+    static get is() { return 'my-account'; }
+    static get properties() {
+      return {
+        prop1: {
+          type: String,
+          value: 'my-account'
+        }
+      };
+    }
+  }
+
+  window.customElements.define(MyAccount.is, MyAccount);
+</script>
+</dom-module>

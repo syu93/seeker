@@ -1,0 +1,28 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+
+<dom-module id="my-settings">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <h2>Hello [[prop1]]!</h2>
+  </template>
+
+  <script>
+    class MySettings extends Polymer.Element {
+      static get is() { return 'my-settings'; }
+      static get properties() {
+        return {
+          prop1: {
+            type: String,
+            value: 'my-settings'
+          }
+        };
+      }
+    }
+
+    window.customElements.define(MySettings.is, MySettings);
+  </script>
+</dom-module>
