@@ -104,7 +104,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <app-drawer id="drawer" slot="drawer" swipe-open="[[narrow]]">
       <app-toolbar>Menu</app-toolbar>
       <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
-        <a name="map" href="[[rootPath]]map">Map</a>
+        <a name="map" href="[[rootPath]]map/">Map</a>
         <a name="account" href="[[rootPath]]account">Account</a>
         <a name="settings" href="[[rootPath]]settings">Settings</a>
       </iron-selector>
@@ -113,7 +113,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <app-header-layout>
       <app-header slot="header" condenses reveals effects="waterfall">
         <app-toolbar>
-          <a class="back-menu" href="/"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
+          <a class="back-menu" href="/map/"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
           <div main-title>Account</div>
           <paper-icon-button icon="my-icons:more-vert"></paper-icon-button>
         </app-toolbar>

@@ -14,6 +14,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../bower_components/google-map/google-map-marker.html">
 <link rel="import" href="../bower_components/app-route/app-route.html">
 <link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/paper-slider/paper-slider.html">
 <link rel="import" href="shared-styles.html">
 
 <dom-module id="my-map">
@@ -24,6 +26,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         min-height: 100vh;
         background: lightgrey;
+        color: var(--light-text-color);
       }
 
       /* Due to firefox compate forced to use classes */
@@ -51,13 +54,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         --paper-icon-button-ink-color: grey;
       }
 
-      app-header-layout,
-      iron-pages {
+      app-header-layout {
         min-height: 100vh;
         overflow: hidden;
       }
 
-      section {
+      section[name="map"] {
         position: absolute;
         top: 0;
         left: 0;
@@ -74,26 +76,30 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         width: 100%;
       }
 
+      .ctn {
+        padding: 0 16px;
+        position: absolute;
+        width: 100%;
+        background: #fff;
+        z-index: 10;
+        box-sizing: border-box;
+        transition: transform .1s .1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      }
+
       #historySearch {
         padding: 0 16px;
+        height: 100vh;
         position: absolute;
         top: 100vh;
         /*top: 0;*/ /* dev purpose */
         bottom: 0;
         left: 0;
         right: 0;
-        width: 100%;
-        height: 100vh;
-        background: #fff;
-        z-index: 10;
-        box-sizing: border-box;
-
-        transition: transform .1s .1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
       }
 
-      #historySearch.display {
-        transform: translate(0, -100vh);
-      }
+      .displaySearch {transform: translate(0, -100vh);}
+
+      .displayRider {transform: translate(0, -50vh);}
 
       #historySearch .scrolling {
         margin-top: 96px;
@@ -104,6 +110,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       #historySearch .tile {
+        cursor: pointer;
         text-decoration: none;
         color: var(--light-text-color);
         width: 100%;
@@ -124,11 +131,47 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         min-width: 24px;
       }
 
-      #historySearch .tile span{
+      #historySearch .tile span,
+      #historySearch .tile div {
+        display: block;
         pointer-events: none;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      #historySearch .tile .name {
+        font-size: .8em;
+        font-weight: bold;
+        color: #424242;
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 1px;
+      }
+
+      #riderInfo {
+        top: 70vh;
+        height: 100vh;
+        padding: 16px 16px 0 16px;
+        box-shadow: 1px 0px 10px 0px rgba(0, 0, 0, 0.41);
+        transition: transform .3s .1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      }
+      
+      #riderInfo header {
+        text-align: right;
+      }
+      
+      #riderInfo .range-section span {
+        display: inline-block;
+        font-size: 2em;
+        padding: 8px;
+        width: 48px;
+        text-align: center;
+        height: 48px;
+        font-weight: bold;
       }
 
       app-toolbar a {
@@ -139,9 +182,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
     <app-route
       route="{{route}}"
-      pattern="/:longitude/:latitude"
+      pattern="/:action"
       data="{{routeData}}"
       tail="{{subroute}}"></app-route>
+    <app-route
+      route="{{subroute}}"
+      pattern="/:longitude/:latitude"
+      data="{{routeCoorData}}"
+      tail="{{subrouteCoor}}"></app-route>
     <iron-ajax
        auto
        url="https://freegeoip.net/json/"
@@ -153,56 +201,91 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       <app-header slot="header" condenses reveals effects="waterfall">
         <app-toolbar>
           <paper-icon-button class="menu" icon="my-icons:menu" on-tap="toggleDrawer"></paper-icon-button>
-          <a class="back-menu" href="#" on-tap="_hideSuggested"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
+          <paper-icon-button class="back-menu" icon="my-icons:arrow-back" on-tap="_hide"></paper-icon-button>
           <div main-title><paper-input
               type="text"
               label="Search"
-              name=""
+              name="search"
               value="{{searchTerm}}"
               placeholder="Where are we going ?"
-              results="5"
               on-focus="_displaySuggested">
             </paper-input></div>
-            <paper-icon-button icon="my-icons:clear" on-tap="clear"></paper-icon-button>
-            <a href$="[[_getSearch(searchLng, searchLat, searchTerm)]]"><paper-icon-button icon="my-icons:search"></paper-icon-button></a>
+            <template is="dom-if" if={{searchTerm}}><a href="/map/search" on-tap="clear"><paper-icon-button icon="my-icons:clear"></paper-icon-button></a></template>
+            <a href$="[[_getSearch(searchLng, searchLat, searchTerm)]]" on-tap="_search"><paper-icon-button icon="my-icons:search"></paper-icon-button></a>
         </app-toolbar>
       </app-header>
 
-      <div id="historySearch">
-        <div class="scrolling">
-          <template is="dom-repeat" items={{results}} 
-            as=result index-as=index>
-            <!-- [[_log(result)]] -->
-            <span class="tile" result="[[result]]" on-click="setSearch">
-              <iron-icon icon="my-icons:room"></iron-icon>
-              <span>[[result.formatted_address]]</span>
-            </span>
-          </template>
-        </div>
-      </div>
+      <!-- Search panels -->
+      <iron-pages attr-for-selected="name" selected="[[action]]" fallback-selection="search">
 
-      <section>
+        <!-- Search -->
+        <section id="historySearch" class="ctn" name="search">
+          <ul class="scrolling">
+            <!-- <template is="dom-repeat" items={{results}}  -->
+            <template is="dom-repeat" items={{searchHistory}} 
+              as=result index-as=index>
+              <!-- [[_log(result)]] -->
+              <li class="tile" result="[[result]]"  tabindex="0" on-click="setSearch">
+                <iron-icon icon="my-icons:room"></iron-icon>
+                <div>
+                  <span class="name">[[result.name]]</span>
+                  <span class="address">[[result.formatted_address]]</span>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </section>
+
+        <!-- Go -->
+        <section id="riderInfo" class="ctn" name="go">
+          <div class="scrolling">
+            <header>
+              <paper-icon-button icon="my-icons:[[goExpend]]" on-tap="_toggleDisplayGo"></paper-icon-button>
+            </header>
+            <section>
+              <h2>Number of passengers :</h2>
+              <div class="range-section flex-horizontal">
+                <paper-slider type="range" min="1" max="5" immediate-value="{{nbRiders}}"></paper-slider>
+                <span>[[nbRiders]]</span>
+              </div>
+            </section>
+            <div>
+              <h2>Luggages :</h2>
+              <div class="range-section flex-horizontal">
+                <paper-slider type="range" min="0" max="5" immediate-value="{{nbLuggages}}"></paper-slider>
+                <span>[[nbLuggages]]</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </iron-pages>
+
+      <!-- Map section -->
+      <section name="map">
         <google-map-search
           map="[[map]]"
-          query="[[searchTerm]]"
+          query="[[_query(searchTerm)]]"
           results="{{results}}">
         </google-map-search>
         <google-map
           map="{{map}}"
           latitude="[[_converteComma(searchLat)]]"
           longitude="[[_converteComma(searchLng)]]"
-          zoom="17"
+          zoom="12"
           disable-default-ui
           styles="[[_styles]]"
           additional-map-options="[[_additionalMapOptions]]"
           api-key="[[_mapApiKey]]">
-          <template is="dom-if" if={{searchTerm}}>
-            <google-map-marker
-              latitude="[[_converteComma(searchLat)]]"
-              longitude="[[_converteComma(searchLng)]]"
-              title="Go Giants!">
-            </google-map-marker>
-          </template>
+
+          <google-map-marker
+            id="destination"
+            hidden$="[[!_isSearchSet(action)]]"
+            map="[[map]]"
+            on-marker-changed="_destinationMarkerChanged"
+            latitude="[[_converteComma(searchLat)]]"
+            longitude="[[_converteComma(searchLng)]]">
+          </google-map-marker>
 
         </google-map>
       </section>
@@ -215,6 +298,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       static get properties() {
         return {
+          routeData: Object,
+          subroute: String,
           search: {
             type: Boolean,
             reflectToAttribute: true,
@@ -223,16 +308,42 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: String,
             value: ""
           },
+          searchLng: {
+            type: Number,
+            value: 2.344312
+          },
+          searchLat: {
+            type: Number,
+            value: 48.87905
+          },
           searchHistory: {
             type: Array,
             value: () => {
               let a = [];
               for (var i = 0; i < 21; i++) {
-                a.push({formatted_address: `${i} Lorem Ipsum Lorem`, latitude: 1.2 + i, longitude: 1.2});
+                a.push({name: `Lorem ${i}`, formatted_address: `${i} Lorem Ipsum LoremLorem Ipsum LoremLorem Ipsum LoremLorem Ipsum Lorem`, latitude: 1.2 + i, longitude: 1.2});
               }
               return a;
             }
           },
+          goExpend: {
+            type: String,
+            value: "expand-less"
+          },
+          nbRiders: {
+            type: Number,
+            value: 1
+          },
+          nbLuggages: {
+            type: Number,
+            value: 0
+          },
+          destinationMarkerReady: {
+            type: Boolean,
+            value: false
+          },
+
+
           _mapApiKey: {
             type: String,
             value: () => {
@@ -241,16 +352,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           },
           _styles: {
             value: () => {
-              return [
-                // {
-                //   featureType: 'poi.business',
-                //   stylers: [{visibility: 'off'}]
-                // },
-                // {
-                //   elementType: 'labels.icon',
-                //   stylers: [{visibility: 'off'}]
-                // }
-              ]
+              return [];
             }
           },
           _additionalMapOptions: {
@@ -263,17 +365,22 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       static get observers() {
         return [
-        '_routePageChanged(routeData.longitude, routeData.latitude)',
+        '_routeActionChanged(routeData.action)',
+        '_routeCoordonateChanged(routeCoorData.longitude, routeCoorData.latitude)',
+        '_locationChange(userGeoIP.latitude, userGeoIP.longitude)',
+        '_plop(destination.*)'
         ];
       }
 
       ready() {
         super.ready();
 
-        let query = this._getQueryVariable('qry');
-        if (query) {
-          this.set('searchTerm', query);
+        // Force the path
+        if (window.location.pathname == "/") {
+          this._pushState('map/');
         }
+
+        this._getAndSetQuery();
       }
 
       toggleDrawer() {
@@ -292,19 +399,95 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.set('searchTerm', e.target.result.formatted_address);
         this.set('searchLng', e.target.result.longitude);
         this.set('searchLat', e.target.result.latitude);
+        this.set('name', e.target.result.name);
       }
 
       clear(e) {
         let lng = 37.77493;
         let lat = -122.41942;
-        if (this.userGeoIP.longitude && this.userGeoIP.latitude) {
+        if (this.userGeoIP && this.userGeoIP.longitude && this.userGeoIP.latitude) {
           lng = this.userGeoIP.longitude;
           lat = this.userGeoIP.latitude;
         }
+        console.log("Log clear location", lng, lat);
         console.info("Log : Clear selected search");
         this.set('searchTerm', "");
         this.set('searchLng', lng);
         this.set('searchLat', lat);
+
+        // Clear search result list
+        this.set('results', []);
+
+        this.set('name', null);
+        this.set('action', 'search');
+
+        if (this.destinationMarkerReady) {
+          this.$.destination.marker.setVisible(this.action == "go");
+        }
+      }
+
+      codeAddress() {
+        let geocoder = new google.maps.Geocoder();
+        geocoder.geocode( { 'address': this.searchTerm}, (results, status) => {
+          if (status == google.maps.GeocoderStatus.OK) {
+            this.map.setCenter(results[0].geometry.location);
+            if (results[0].geometry.viewport) 
+              this.map.fitBounds(results[0].geometry.viewport);
+          } else {
+            console.error("Geocode was not successful for the following reason: " + status);
+          }
+        });
+      }
+
+      _pushState(uri) {
+        const stateObject = { dummy: true };
+        const url = window.location.protocol
+            + "//"
+            + window.location.host
+            + window.location.pathname
+            + `${uri}`;
+        history.pushState(stateObject, document.title, url);
+      }
+
+      _query(query) {
+        return query + " ";
+      }
+
+      _locationChange(latitude, longitude) {
+        this.set('searchLng', longitude);
+        this.set('searchLat', latitude);
+      }
+
+      _isSearchSet(action) {
+        return action == "go" ? true : false;
+      }
+
+      _search(e) {
+        if (this.searchTerm == "")
+          return;
+
+        this._hideSuggested();
+        this.set('action', "go");
+
+        if (this.destinationMarkerReady) {
+          this.$.destination.marker.setVisible(this.action == "go");
+        }
+      }
+
+      _destinationMarkerChanged(e) {
+        this.destinationMarkerReady = true;
+
+        this.codeAddress();
+      }
+
+      _toggleDisplayGo(e) {
+        this.goExpend = (this.goExpend == 'expand-more') ? 'expand-less' : 'expand-more';
+
+        if (this.goExpend == 'expand-more') {
+          this._displayGo();
+        } else {
+          this._hideGo();
+        }
       }
 
       _getQueryVariable(value) {
@@ -316,30 +499,54 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             return decodeURIComponent(pair[1]);
           }
         }
-        console.log('Query variable %s not found', value);
       }
 
       _converteComma(value) {
-        return `${value}`.replace(",", ".");
+        return parseFloat(`${value}`.replace(",", "."));
       }
 
       _converteDot(value) {
         return `${value}`.replace(".", ",");
       }
 
-      _getSearch(searchLng, searchLat, searchTerm) {
-        if (searchLng && searchLat) {
-          return `/map/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}?qry=${searchTerm}`;
+      _getAndSetQuery() {
+        let query = this._getQueryVariable('qry');
+        if (query) {
+          this.set('searchTerm', query);
         }
-        return "#";
       }
 
-      _routePageChanged(longitude, latitude) {
-        this.set('searchLng', longitude);
-        this.set('searchLat', latitude);
+      _getSearch(searchLng, searchLat, searchTerm) {
+        if (searchTerm && searchLng && searchLat) {
+          return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}?qry=${searchTerm}`;
+        }
+        return "/map/";
+      }
+
+      _routeActionChanged(action) {
+        this.action = action || 'search';
+        if (this.action == "search") {
+          this.clear();
+          return;
+        }
+
+        this._getAndSetQuery();
+      }
+
+      _routeCoordonateChanged(longitude, latitude) {
+        if (longitude)
+          this.set('searchLng', longitude);
+        if (latitude)
+          this.set('searchLat', latitude);
 
         // Close the search result list
         this._hideSuggested();
+        // Clear search result list
+        this.set('results', []);
+
+        if (this.destinationMarkerReady) {
+          this.codeAddress();
+        }
       }
 
       _log(value) {
@@ -348,13 +555,33 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       _displaySuggested() {
         console.info("Log : Display search history");
-        this.$.historySearch.classList.add('display');
+        this.action = "search";
+        this.$.historySearch.classList.add('displaySearch');
         this.search = true;
+      }
+
+      _hide(e) {
+        this._hideSuggested();
+        this._hideGo();
+
+        this.goExpend = 'expand-less';
       }
 
       _hideSuggested() {
         console.info("Log : Hide search history");
-        this.$.historySearch.classList.remove('display');
+        this.$.historySearch.classList.remove('displaySearch');
+        this.search = false;
+      }
+
+      _displayGo() {
+        console.info("Log : Display riders info");
+        this.$.riderInfo.classList.add('displayRider');
+        this.search = true;
+      }
+
+      _hideGo() {
+        console.info("Log : Display riders info");
+        this.$.riderInfo.classList.remove('displayRider');
         this.search = false;
       }
     }
