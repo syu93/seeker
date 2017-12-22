@@ -18,7 +18,8 @@
     "google-map": "GoogleWebComponents/google-map#^2.0.2",
     "google-map-markerclusterer": "timeu/google-map-markerclusterer#^1.0.2",
     "iron-swipeable-pages": "2.0-preview",
-    "iron-ajax": "^2.0.6"
+    "iron-ajax": "^2.0.6",
+    "paper-slider": "^2.0.4"
   },
   "resolutions": {
     "polymer": "^2.0.0",
