@@ -4,6 +4,19 @@
 <dom-module id="go-from">
   <template>
     <style>
+      /* Due to firefox compat, forced to use classes :'(); */
+      :host([search]) .menu {
+        display: none;
+      }
+
+      :host([search]) .back-menu {
+        display: block;
+      }
+
+      .back-menu {
+        display: none;
+      }
+
       :host([hidden]) {
         display: none;
       }
@@ -30,8 +43,10 @@
     </google-map-search>
     <!-- [[_log(results)]] -->
     <app-toolbar>
-      <!-- <paper-icon-button icon="my-icons:arrow-back" on-tap="_hideSuggested"></paper-icon-button> -->
-      <paper-icon-button icon="my-icons:menu" on-tap="_toggleDrawer"></paper-icon-button>
+      <!-- menu burger -->
+      <paper-icon-button id="menu" class="menu" icon="my-icons:menu" on-tap="_toggleDrawer"></paper-icon-button>
+      <!-- Back arrow -->
+      <paper-icon-button id="arrow" class="back-menu" icon="my-icons:arrow-back" on-tap="_hide"></paper-icon-button>
       <div main-title><paper-input
         label="From"
         placeholder="From"
@@ -47,7 +62,15 @@
       static get is() { return 'go-from'; }
       static get properties() {
         return {
+          search: {
+            type: Boolean,
+            reflectToAttribute: true,
+          },
           hidden: Boolean,
+          goExpend: {
+            type: String,
+            value: "expand-less"
+          },
           results: {
             type: Array,
             value: () => {
@@ -69,8 +92,8 @@
         this.fire("display-suggested", {from: true});
       }
 
-      _hideSuggested(e) {
-        this.fire("hide-suggested", {from: true});
+      _hide(e) {
+        this.fire("hide", {from: true});
       }
 
       _toggleDrawer(e) {

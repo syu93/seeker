@@ -165,7 +165,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         padding: 1px;
       }
 
-      #riderInfo {
+      #riderInfo,
+      #eta {
         top: 70vh;
         height: 100vh;
         padding: 16px 16px 0 16px;
@@ -173,7 +174,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         transition: transform .3s .1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
       }
       
-      #riderInfo header {
+      #riderInfo header,
+      #eta header {
         text-align: right;
       }
       
@@ -185,6 +187,17 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         text-align: center;
         height: 48px;
         font-weight: bold;
+      }
+
+      #eta span.duration {
+        font-size: 2em;
+        font-weight: 900;
+        color: #efc07c;
+      }
+
+      #eta span.distance {
+        font-size: 1.5em;
+        font-weight: 500;
       }
 
       app-toolbar a {
@@ -252,15 +265,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           map="[[map]]"
           from="{{fromSearchTerm}}"
           results="{{results}}"
+          go-expend="[[goExpend]]"
+          search="[[search]]"
           on-display-suggested="_displaySuggested"
-          on-hide-suggested="_hideSuggested"
-          on-toggle-drawer="toggleDrawer"
+          on-hide="_hide"
           hidden=[[!gofrom]]></go-from>
         <app-toolbar>
           <!-- menu burger -->
-          <paper-icon-button id="arrow" class="menu" icon="my-icons:menu" on-tap="toggleDrawer"></paper-icon-button>
+          <paper-icon-button id="menu" class="menu" icon="my-icons:menu" on-tap="toggleDrawer"></paper-icon-button>
           <!-- Back arrow -->
-          <paper-icon-button id="menu" class="back-menu" icon="my-icons:arrow-back" on-tap="_hide"></paper-icon-button>
+          <paper-icon-button id="arrow" class="back-menu" icon="my-icons:arrow-back" on-tap="_hide"></paper-icon-button>
 
           <div main-title><paper-input
               type="search"
@@ -311,13 +325,26 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 <span>[[nbRiders]]</span>
               </div>
             </section>
-            <div>
+            <section>
               <h2>Luggages :</h2>
               <div class="range-section flex-horizontal">
                 <paper-slider type="range" min="0" max="5" immediate-value="{{nbLuggages}}"></paper-slider>
                 <span>[[nbLuggages]]</span>
               </div>
-            </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="eta" class="ctn" name="eta">
+          <div class="scrolling from-mode">
+            <header>
+              <paper-icon-button icon="my-icons:[[ETAExpend]]" on-tap="_toggleDisplayETA"></paper-icon-button>
+            </header>
+            <section>
+              <p>
+                ETA <span class="duration">[[duration]]</span> - <span class="distance">([[distance]])</span>
+              </p>
+            </section>
           </div>
         </section>
       </iron-pages>
@@ -335,6 +362,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           api-key="[[_mapApiKey]]"
           start-address="[[startAddress]]"
           end-address="[[endAddress]]"
+          response="{{response}}"
+          on-google-map-response="getETATime"
           travel-mode="DRIVING"></pinnackl-map-directions>
 
         <google-map
@@ -347,6 +376,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           styles="[[_styles]]"
           additional-map-options="[[_additionalMapOptions]]"
           api-key="[[_mapApiKey]]">
+
+          <google-map-marker
+            id="start"
+            slot="marker"
+            hidden$="[[!_isSearchSet(action)]]"
+            map="[[map]]"
+            on-marker-changed="_destinationMarkerChanged"
+            latitude="[[_converteComma(searchFromLat)]]"
+            longitude="[[_converteComma(searchFromLng)]]">
+          </google-map-marker>
 
           <google-map-marker
             id="destination"
@@ -422,6 +461,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: String,
             value: "expand-less"
           },
+          ETAExpend: {
+            type: String,
+            value: "expand-less"
+          },
           nbRiders: {
             type: Number,
             value: 1
@@ -435,6 +478,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             value: false
           },
           geolocationGranted: {
+            type: Boolean,
+            value: false
+          },
+          fromPositionDefined: {
             type: Boolean,
             value: false
           },
@@ -494,19 +541,22 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       setSearch(e) {
         console.info("Log : Map selected search", e.target.result);
 
-        if (!this.gofrom) {
+        // Set the destination
+        if (!this.gofrom && this.input == "to") {
           this.set('searchLng', e.target.result.longitude);
           this.set('searchLat', e.target.result.latitude);
           this.set('name', e.target.result.name);
           return this.set('searchTerm', e.target.result.formatted_address);
         }
 
+        // Set the starting point
         this.set('searchFromLng', e.target.result.longitude);
         this.set('searchFromLat', e.target.result.latitude);
         return this.set('fromSearchTerm', e.target.result.formatted_address);
       }
 
       clear(e) {
+        // FIXME : Change arbitrary value
         let lng = 37.77493;
         let lat = -122.41942;
         if (this.userGeoIP && this.userGeoIP.longitude && this.userGeoIP.latitude) {
@@ -533,6 +583,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       codeAddress() {
+        if (this.searchLng && this.searchLat && this.searchFromLng && this.searchFromLat) {
+          // Start ETA
+          
+          this.set('action', "eta");
+          this._direction();
+          return
+        }
+
         let geocoder = new google.maps.Geocoder();
         geocoder.geocode( { 'address': this.searchTerm}, (results, status) => {
           if (status == google.maps.GeocoderStatus.OK) {
@@ -543,6 +601,20 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             console.error("Geocode was not successful for the following reason: " + status);
           }
         });
+      }
+
+      getETATime(e, detail) {
+        if (detail.response.status == "OK") {
+          detail.response.routes.forEach((route) => {
+            route.legs.forEach((leg) => {
+              this.duration = leg.duration.text;
+              this.distance = leg.distance.text;
+            });
+          });
+          return;
+        }
+
+        return this.time = "N/A";
       }
 
       _pushState(uri) {
@@ -578,31 +650,38 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         this._hideSuggested();
         this.set('action', "go");
+        this._warn("==> State : action", this.action);
 
         if (this.destinationMarkerReady) {
           this.$.destination.marker.setVisible(this.action == "go");
+          this.$.start.marker.setVisible(this.action == "go");
         }
       }
 
       async _direction(e) {
-        if (this.navigate && this.geolocationGranted) {
+        if (this.navigate && (this.geolocationGranted || this.fromPositionDefined)) {
           console.log("Log : Estimated travel time");
-          // this.set("startAddress", await new google.maps.LatLng(this.searchLat, this.searchLng));
-          // this.set("endAddress", await new google.maps.LatLng(this.searchLat, this.searchLng));
-          // console.log(this.startAddress);
-          // console.log(this.endAddress);
+          this.set("startAddress", await new google.maps.LatLng(this.searchFromLat, this.searchFromLng));
+          this.set("endAddress", await new google.maps.LatLng(this.searchLat, this.searchLng));
+
+          // console.log("Log startAddress :", this.startAddress);
+          // console.log("Log endAddress :", this.endAddress);
           return;
         }
 
+        console.log("If not geolocation defined set start address");
+        // Display the from search bar
         this.set("gofrom", true);
+        this._warn("==> State : gofrom", this.gofrom);
 
+        // Hide the lower menu action icon
         this.$.arrow.classList.add('hidden');
         this.$.menu.classList.add('hidden');
-        console.log("If not geolocation defined set start address");
       }
 
       _destinationMarkerChanged(e) {
         this.destinationMarkerReady = true;
+        this._warn("==> State : destinationMarkerReady", this.destinationMarkerReady);
 
         if (this.searchTerm == "")
           return;
@@ -617,6 +696,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           this._displayGo();
         } else {
           this._hideGo();
+        }
+      }
+
+      _toggleDisplayETA(e) {
+        this.ETAExpend = (this.ETAExpend == 'expand-more') ? 'expand-less' : 'expand-more';
+
+        if (this.ETAExpend == 'expand-more') {
+          this._displayETA();
+        } else {
+          this._hideETA();
         }
       }
 
@@ -674,6 +763,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _routeCoordonateChanged(longitude, latitude, destinationMarkerReady) {
+        this._warn("==> State : searchLng, searchLat, destinationMarkerReady", longitude, latitude, !!destinationMarkerReady);
         if (longitude) {
           this.set('searchLng', this._converteComma(longitude));
         }
@@ -696,6 +786,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _routeFromCoordonateChanged(longitude, latitude, destinationMarkerReady) {
+        this._warn("==> State : searchFromLng, searchFromLat, destinationMarkerReady", longitude, latitude, !!destinationMarkerReady);
         if (longitude) {
           this.set('searchFromLng', this._converteComma(longitude));
         }
@@ -708,23 +799,29 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         // Clear search result list
         this.set('results', []);
 
-        if (this.destinationMarkerReady && this.fromSearchTerm != "") {
-          // Navigate
-          this.set("navigate", true);
-
           // Display the from search bar
           this.set("gofrom", true);
           // Hide drawer menu
           this.$.arrow.classList.add('hidden');
           this.$.menu.classList.add('hidden');
 
+        // if (this.destinationMarkerReady && this.fromSearchTerm != "") {
+        if (this.destinationMarkerReady && this.fromSearchTerm != "") {
+          // Navigate
+          this.set("navigate", true);
+
           this.set("action", "go");
+          this.set('fromPositionDefined', true);
         }
       }
 
       _log(value) {
         console.log(value);
       }
+
+      /**
+       * Display UI control
+       */
 
       _hide(e) {
         this._hideSuggested();
@@ -741,8 +838,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         if (detail && detail.from) {
           let ul = this.$.historySearch.querySelector(".scrolling");
-          ul.classList.add("from-mode");
+          this.input = "from";
+          return ul.classList.add("from-mode");
         }
+
+        this.input = "to";
       }
 
       _hideSuggested(e, detail) {
@@ -765,6 +865,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _hideGo() {
         console.info("Log : Display riders info");
         this.$.riderInfo.classList.remove('displayRider');
+        this.search = false;
+      }
+
+      _displayETA() {
+        console.info("Log : Display riders info");
+        console.log(this.$.eta);
+        this.$.eta.classList.add('displayRider');
+        this.search = true;
+      }
+
+      _hideETA() {
+        console.info("Log : Display riders info");
+        this.$.eta.classList.remove('displayRider');
         this.search = false;
       }
     }
