@@ -1,0 +1,87 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/google-map/google-map-search.html">
+
+<dom-module id="go-from">
+  <template>
+    <style>
+      :host([hidden]) {
+        display: none;
+      }
+
+      :host {
+        display: block;
+        z-index: 1;
+        background-color: transparent;
+      }
+
+      [main-title] {
+        /* Set pointer event to allow access to the input in header bar */
+        pointer-events: auto;
+      }
+
+      .spacer {
+        margin-left: 40px;
+      }
+    </style>
+    <google-map-search
+      map="[[map]]"
+      query="[[from]]"
+      results="{{results}}">
+    </google-map-search>
+    <!-- [[_log(results)]] -->
+    <app-toolbar>
+      <!-- <paper-icon-button icon="my-icons:arrow-back" on-tap="_hideSuggested"></paper-icon-button> -->
+      <paper-icon-button icon="my-icons:menu" on-tap="_toggleDrawer"></paper-icon-button>
+      <div main-title><paper-input
+        label="From"
+        placeholder="From"
+        value="{{from}}"
+        on-focus="_displaySuggested"></paper-input></div>
+      <template is="dom-if" if={{from}}><paper-icon-button icon="my-icons:clear"></paper-icon-button></template>
+      <span class="spacer"></span>
+    </app-toolbar>
+  </template>
+
+  <script>
+    class GoFrom extends Polymer.LegacyElementMixin(Polymer.Element) {
+      static get is() { return 'go-from'; }
+      static get properties() {
+        return {
+          hidden: Boolean,
+          results: {
+            type: Array,
+            value: () => {
+              return [];
+            },
+            notify: true,
+          },
+          from: {
+            type: String,
+            value: "",
+          },
+          map: {
+            type: Object,
+          },
+        };
+      }
+
+      _displaySuggested(e) {
+        this.fire("display-suggested", {from: true});
+      }
+
+      _hideSuggested(e) {
+        this.fire("hide-suggested", {from: true});
+      }
+
+      _toggleDrawer(e) {
+        this.fire('toggle-drawer');
+      }
+
+      _log(value) {
+        console.log(value);
+      }
+    }
+
+    window.customElements.define(GoFrom.is, GoFrom);
+  </script>
+</dom-module>

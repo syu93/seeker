@@ -16,20 +16,28 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
 <link rel="import" href="../bower_components/iron-pages/iron-pages.html">
 <link rel="import" href="../bower_components/paper-slider/paper-slider.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
 <link rel="import" href="shared-styles.html">
+
+<link rel="import" href="pinnackl-map-directions.html">
+<link rel="import" href="go-from.html">
 
 <dom-module id="my-map">
   <template>
     <style include="shared-styles">
       :host {
         display: block;
-
+        position: relative;
         min-height: 100vh;
         background: lightgrey;
         color: var(--light-text-color);
+
+        --accent-color: var(--app-primary-color);
+        --paper-fab-keyboard-focus-background: #4285f4;
       }
 
-      /* Due to firefox compate forced to use classes */
+      /* Due to firefox compat, forced to use classes :'(); */
       :host([search]) .menu {
         display: none;
       }
@@ -69,6 +77,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       [main-title] {
+        /* Set pointer event to allow access to the input in header bar */
         pointer-events: auto;
       }
 
@@ -99,7 +108,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       .displaySearch {transform: translate(0, -100vh);}
 
-      .displayRider {transform: translate(0, -50vh);}
+      .displayRider {transform: translate(0, -40vh);}
 
       #historySearch .scrolling {
         margin-top: 96px;
@@ -107,6 +116,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         height: 87vh;
         box-sizing: border-box;
         overflow-y: scroll;
+      }
+
+      #historySearch .scrolling.from-mode {
+        margin-top: 160px;
       }
 
       #historySearch .tile {
@@ -178,6 +191,35 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         text-decoration: none;
         color: inherit;
       }
+
+      .fabs {
+        position: fixed;
+        right: 1em;
+        bottom: 2em;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        transform: translate(0%, 0%);
+        transition: transform .3s .1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      }
+
+      .fabs.go {
+        transform: translate(0, -30vh);
+      }
+
+      paper-fab {
+        color: #fff;
+      }
+
+      paper-fab:first-child {
+        margin-bottom: 1em;
+      }
+
+      [hidden],
+      .hidden {
+        visibility: hidden !important;
+      }
     </style>
 
     <app-route
@@ -190,8 +232,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       pattern="/:longitude/:latitude"
       data="{{routeCoorData}}"
       tail="{{subrouteCoor}}"></app-route>
+    <app-route
+      route="{{subrouteCoor}}"
+      pattern="/:fromlongitude/:fromlatitude"
+      data="{{routeFromCoorData}}"
+      tail="{{subrouteFromCoor}}"></app-route>
+
+    <!-- Load position on desktop if Geolocation is not granted -->
     <iron-ajax
-       auto
+       auto$="[[geolocationGranted]]"
        url="https://freegeoip.net/json/"
        handle-as="json"
        last-response="{{userGeoIP}}"></iron-ajax>
@@ -199,19 +248,32 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <!-- Main content -->
     <app-header-layout>
       <app-header slot="header" condenses reveals effects="waterfall">
+        <go-from
+          map="[[map]]"
+          from="{{fromSearchTerm}}"
+          results="{{results}}"
+          on-display-suggested="_displaySuggested"
+          on-hide-suggested="_hideSuggested"
+          on-toggle-drawer="toggleDrawer"
+          hidden=[[!gofrom]]></go-from>
         <app-toolbar>
-          <paper-icon-button class="menu" icon="my-icons:menu" on-tap="toggleDrawer"></paper-icon-button>
-          <paper-icon-button class="back-menu" icon="my-icons:arrow-back" on-tap="_hide"></paper-icon-button>
+          <!-- menu burger -->
+          <paper-icon-button id="arrow" class="menu" icon="my-icons:menu" on-tap="toggleDrawer"></paper-icon-button>
+          <!-- Back arrow -->
+          <paper-icon-button id="menu" class="back-menu" icon="my-icons:arrow-back" on-tap="_hide"></paper-icon-button>
+
           <div main-title><paper-input
-              type="text"
-              label="Search"
+              type="search"
+              label="To"
               name="search"
               value="{{searchTerm}}"
               placeholder="Where are we going ?"
               on-focus="_displaySuggested">
             </paper-input></div>
             <template is="dom-if" if={{searchTerm}}><a href="/map/search" on-tap="clear"><paper-icon-button icon="my-icons:clear"></paper-icon-button></a></template>
-            <a href$="[[_getSearch(searchLng, searchLat, searchTerm)]]" on-tap="_search"><paper-icon-button icon="my-icons:search"></paper-icon-button></a>
+            <a
+              href$="[[_getSearch(searchLng, searchLat, searchTerm, searchFromLng, searchFromLat,fromSearchTerm)]]"
+              on-tap="_search"><paper-icon-button icon="my-icons:search"></paper-icon-button></a>
         </app-toolbar>
       </app-header>
 
@@ -221,8 +283,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <!-- Search -->
         <section id="historySearch" class="ctn" name="search">
           <ul class="scrolling">
-            <!-- <template is="dom-repeat" items={{results}}  -->
-            <template is="dom-repeat" items={{searchHistory}} 
+            <!-- <template is="dom-repeat" items={{searchHistory}}  -->
+            <template is="dom-repeat" items={{results}} 
               as=result index-as=index>
               <!-- [[_log(result)]] -->
               <li class="tile" result="[[result]]"  tabindex="0" on-click="setSearch">
@@ -258,7 +320,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             </div>
           </div>
         </section>
-
       </iron-pages>
 
       <!-- Map section -->
@@ -268,10 +329,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           query="[[_query(searchTerm)]]"
           results="{{results}}">
         </google-map-search>
+
+        <pinnackl-map-directions
+          map="{{map}}"
+          api-key="[[_mapApiKey]]"
+          start-address="[[startAddress]]"
+          end-address="[[endAddress]]"
+          travel-mode="DRIVING"></pinnackl-map-directions>
+
         <google-map
           map="{{map}}"
+          markers="{{markers}}"
           latitude="[[_converteComma(searchLat)]]"
-          longitude="[[_converteComma(searchLng)]]"
+          longitude="[[_converteComma(searchLng )]]"
           zoom="12"
           disable-default-ui
           styles="[[_styles]]"
@@ -280,6 +350,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
           <google-map-marker
             id="destination"
+            slot="marker"
             hidden$="[[!_isSearchSet(action)]]"
             map="[[map]]"
             on-marker-changed="_destinationMarkerChanged"
@@ -289,15 +360,26 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         </google-map>
       </section>
+
+      <div id="fabs" class$="fabs [[action]]">
+        <paper-fab mini icon="my-icons:location-disabled"></paper-fab>
+        <paper-fab icon="my-icons:directions" on-tap="_direction"></paper-fab>
+      </div>
     </app-header-layout>
   </template>
 
   <script>
-    class MyMap extends Polymer.Element {
+    class MyMap extends Polymer.LegacyElementMixin(Polymer.Element) {
       static get is() { return 'my-map'; }
 
       static get properties() {
         return {
+          startAddress: {
+            value: null
+          },
+          endAddress: {
+            value: null
+          },
           routeData: Object,
           subroute: String,
           search: {
@@ -315,6 +397,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           searchLat: {
             type: Number,
             value: 48.87905
+          },
+          fromSearchTerm: {
+            type: String,
+            value: ""
+          },
+          searchFromLat: {
+            type: Number,
+          },
+          searchFromLng: {
+            type: Number,
           },
           searchHistory: {
             type: Array,
@@ -342,8 +434,20 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: Boolean,
             value: false
           },
+          geolocationGranted: {
+            type: Boolean,
+            value: false
+          },
+          gofrom: {
+            type: Boolean,
+            value: false
+          },
+          navigate: {
+            type: Boolean,
+            value: false
+          },
 
-
+          // Private
           _mapApiKey: {
             type: String,
             value: () => {
@@ -366,9 +470,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       static get observers() {
         return [
         '_routeActionChanged(routeData.action)',
-        '_routeCoordonateChanged(routeCoorData.longitude, routeCoorData.latitude)',
+        '_routeCoordonateChanged(routeCoorData.longitude, routeCoorData.latitude, destinationMarkerReady)',
+        '_routeFromCoordonateChanged(routeFromCoorData.fromlongitude, routeFromCoorData.fromlatitude, destinationMarkerReady)',
         '_locationChange(userGeoIP.latitude, userGeoIP.longitude)',
-        '_plop(destination.*)'
         ];
       }
 
@@ -384,22 +488,22 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       toggleDrawer() {
-        let event = new Event("toggle-drawer", {
-          bubbles: true,
-          cancelable: false,
-          composed: true
-        });
-        event.detail = {};
-        let node = this;
-        node.dispatchEvent(event);
+        this.fire('toggle-drawer');
       }
 
       setSearch(e) {
         console.info("Log : Map selected search", e.target.result);
-        this.set('searchTerm', e.target.result.formatted_address);
-        this.set('searchLng', e.target.result.longitude);
-        this.set('searchLat', e.target.result.latitude);
-        this.set('name', e.target.result.name);
+
+        if (!this.gofrom) {
+          this.set('searchLng', e.target.result.longitude);
+          this.set('searchLat', e.target.result.latitude);
+          this.set('name', e.target.result.name);
+          return this.set('searchTerm', e.target.result.formatted_address);
+        }
+
+        this.set('searchFromLng', e.target.result.longitude);
+        this.set('searchFromLat', e.target.result.latitude);
+        return this.set('fromSearchTerm', e.target.result.formatted_address);
       }
 
       clear(e) {
@@ -412,14 +516,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         console.log("Log clear location", lng, lat);
         console.info("Log : Clear selected search");
         this.set('searchTerm', "");
-        this.set('searchLng', lng);
-        this.set('searchLat', lat);
+        // FIXME : Default location
+        // this.set('searchLng', lng);
+        // this.set('searchLat', lat);
 
         // Clear search result list
         this.set('results', []);
 
         this.set('name', null);
         this.set('action', 'search');
+        this.set("navigate", false);
 
         if (this.destinationMarkerReady) {
           this.$.destination.marker.setVisible(this.action == "go");
@@ -454,8 +560,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _locationChange(latitude, longitude) {
-        this.set('searchLng', longitude);
-        this.set('searchLat', latitude);
+        // Check if search is already defined
+        if (this.searchLng && this.searchLat) {
+          return;
+        }
+        this.set('searchLng', this._converteComma(longitude));
+        this.set('searchLat', this._converteComma(latitude));
       }
 
       _isSearchSet(action) {
@@ -474,8 +584,28 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
       }
 
+      async _direction(e) {
+        if (this.navigate && this.geolocationGranted) {
+          console.log("Log : Estimated travel time");
+          // this.set("startAddress", await new google.maps.LatLng(this.searchLat, this.searchLng));
+          // this.set("endAddress", await new google.maps.LatLng(this.searchLat, this.searchLng));
+          // console.log(this.startAddress);
+          // console.log(this.endAddress);
+          return;
+        }
+
+        this.set("gofrom", true);
+
+        this.$.arrow.classList.add('hidden');
+        this.$.menu.classList.add('hidden');
+        console.log("If not geolocation defined set start address");
+      }
+
       _destinationMarkerChanged(e) {
         this.destinationMarkerReady = true;
+
+        if (this.searchTerm == "")
+          return;
 
         this.codeAddress();
       }
@@ -510,15 +640,25 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _getAndSetQuery() {
-        let query = this._getQueryVariable('qry');
-        if (query) {
-          this.set('searchTerm', query);
+        let from = this._getQueryVariable('from');
+        let to = this._getQueryVariable('to');
+        if (from) {
+          this.set('fromSearchTerm', from);
+        }
+        if (to) {
+          this.set('searchTerm', to);
         }
       }
 
-      _getSearch(searchLng, searchLat, searchTerm) {
-        if (searchTerm && searchLng && searchLat) {
-          return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}?qry=${searchTerm}`;
+      _getSearch(searchLng, searchLat, searchTerm, searchFromLng, searchFromLat, fromSearchTerm) {
+        if (!this.gofrom) {
+          if (searchTerm && searchLng && searchLat) {
+            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}?to=${searchTerm}`;
+          }
+        } else {
+          if (searchTerm && searchLng && searchLat && searchFromLng && searchFromLat && fromSearchTerm) {
+            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}/${this._converteDot(searchFromLng)}/${this._converteDot(searchFromLat)}/?from=${fromSearchTerm}&to=${searchTerm}`;
+          }
         }
         return "/map/";
       }
@@ -533,31 +673,57 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this._getAndSetQuery();
       }
 
-      _routeCoordonateChanged(longitude, latitude) {
-        if (longitude)
-          this.set('searchLng', longitude);
-        if (latitude)
-          this.set('searchLat', latitude);
+      _routeCoordonateChanged(longitude, latitude, destinationMarkerReady) {
+        if (longitude) {
+          this.set('searchLng', this._converteComma(longitude));
+        }
+        if (latitude) {
+          this.set('searchLat', this._converteComma(latitude));
+        }
 
         // Close the search result list
         this._hideSuggested();
         // Clear search result list
         this.set('results', []);
 
-        if (this.destinationMarkerReady) {
+        if (this.destinationMarkerReady && this.searchTerm != "") {
+          // Use this method to focus on marker
           this.codeAddress();
+
+          this.set("navigate", true);
+          this.set("action", "search");
+        }
+      }
+
+      _routeFromCoordonateChanged(longitude, latitude, destinationMarkerReady) {
+        if (longitude) {
+          this.set('searchFromLng', this._converteComma(longitude));
+        }
+        if (latitude) {
+          this.set('searchFromLat', this._converteComma(latitude));
+        }
+
+        // Close the search result list
+        this._hideSuggested();
+        // Clear search result list
+        this.set('results', []);
+
+        if (this.destinationMarkerReady && this.fromSearchTerm != "") {
+          // Navigate
+          this.set("navigate", true);
+
+          // Display the from search bar
+          this.set("gofrom", true);
+          // Hide drawer menu
+          this.$.arrow.classList.add('hidden');
+          this.$.menu.classList.add('hidden');
+
+          this.set("action", "go");
         }
       }
 
       _log(value) {
         console.log(value);
-      }
-
-      _displaySuggested() {
-        console.info("Log : Display search history");
-        this.action = "search";
-        this.$.historySearch.classList.add('displaySearch');
-        this.search = true;
       }
 
       _hide(e) {
@@ -567,10 +733,27 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.goExpend = 'expand-less';
       }
 
-      _hideSuggested() {
+      _displaySuggested(e, detail) {
+        console.info("Log : Display search history");
+        this.action = "search";
+        this.$.historySearch.classList.add('displaySearch');
+        this.search = true;
+
+        if (detail && detail.from) {
+          let ul = this.$.historySearch.querySelector(".scrolling");
+          ul.classList.add("from-mode");
+        }
+      }
+
+      _hideSuggested(e, detail) {
         console.info("Log : Hide search history");
         this.$.historySearch.classList.remove('displaySearch');
         this.search = false;
+
+        if (detail && detail.from) {
+          let ul = this.$.historySearch.querySelector(".scrolling");
+          ul.classList.remove("from-mode");
+        }
       }
 
       _displayGo() {
