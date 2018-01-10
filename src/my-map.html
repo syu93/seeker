@@ -13,15 +13,17 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../bower_components/google-map/google-map-search.html">
 <link rel="import" href="../bower_components/google-map/google-map-marker.html">
 <link rel="import" href="../bower_components/app-route/app-route.html">
-<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
 <link rel="import" href="../bower_components/iron-pages/iron-pages.html">
 <link rel="import" href="../bower_components/paper-slider/paper-slider.html">
 <link rel="import" href="../bower_components/paper-fab/paper-fab.html">
 <link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-tabs/paper-tabs.html">
 <link rel="import" href="shared-styles.html">
 
 <link rel="import" href="pinnackl-map-directions.html">
 <link rel="import" href="go-from.html">
+<link rel="import" href="user-geo.html">
 
 <dom-module id="my-map">
   <template>
@@ -35,6 +37,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         --accent-color: var(--app-primary-color);
         --paper-fab-keyboard-focus-background: #4285f4;
+
+        --paper-tabs-selection-bar-color: var(--app-primary-color);
       }
 
       /* Due to firefox compat, forced to use classes :'(); */
@@ -177,8 +181,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       #riderInfo header,
       #eta header {
         text-align: right;
+        display: flex;
+        justify-content: space-between;
       }
-      
+
+      #riderInfo header .tabs,
+      #eta header .tabs {
+        width: 90%;
+      }
+
       #riderInfo .range-section span {
         display: inline-block;
         font-size: 2em;
@@ -251,12 +262,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       data="{{routeFromCoorData}}"
       tail="{{subrouteFromCoor}}"></app-route>
 
-    <!-- Load position on desktop if Geolocation is not granted -->
-    <iron-ajax
-       auto$="[[geolocationGranted]]"
-       url="https://freegeoip.net/json/"
-       handle-as="json"
-       last-response="{{userGeoIP}}"></iron-ajax>
+    <!-- <user-geo
+
+    ></user-geo> -->
 
     <!-- Main content -->
     <app-header-layout>
@@ -316,6 +324,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <section id="riderInfo" class="ctn" name="go">
           <div class="scrolling">
             <header>
+              <div class="tabs">
+                <paper-tabs selected="{{action}}" attr-for-selected="name" fit-container>
+                  <paper-tab name="go">Riders</paper-tab>
+                  <paper-tab name="eta">ETA</paper-tab>
+                </paper-tabs>
+              </div>
               <paper-icon-button icon="my-icons:[[goExpend]]" on-tap="_toggleDisplayGo"></paper-icon-button>
             </header>
             <section>
@@ -338,11 +352,18 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <section id="eta" class="ctn" name="eta">
           <div class="scrolling from-mode">
             <header>
+              <div class="tabs">
+                <paper-tabs selected="{{action}}" attr-for-selected="name" fit-container>
+                  <paper-tab name="go">Riders</paper-tab>
+                  <paper-tab name="eta">ETA</paper-tab>
+                </paper-tabs>
+              </div>
               <paper-icon-button icon="my-icons:[[ETAExpend]]" on-tap="_toggleDisplayETA"></paper-icon-button>
             </header>
             <section>
+              <h2>Estimated fair :</h2>
               <p>
-                ETA <span class="duration">[[duration]]</span> - <span class="distance">([[distance]])</span>
+                <span class="duration">[[duration]]</span> <span class="distance">([[distance]])</span>
               </p>
             </section>
           </div>
@@ -354,6 +375,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <google-map-search
           map="[[map]]"
           query="[[_query(searchTerm)]]"
+          global-search
           results="{{results}}">
         </google-map-search>
 
@@ -363,9 +385,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           start-address="[[startAddress]]"
           end-address="[[endAddress]]"
           response="{{response}}"
+          provide-route-alternatives
           on-google-map-response="getETATime"
           travel-mode="DRIVING"></pinnackl-map-directions>
-
+          <!-- FIXME : Count the alternative ruoute -->
+          <!-- FIXME : crate method to set routes -->
         <google-map
           map="{{map}}"
           markers="{{markers}}"
@@ -376,16 +400,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           styles="[[_styles]]"
           additional-map-options="[[_additionalMapOptions]]"
           api-key="[[_mapApiKey]]">
-
-          <google-map-marker
-            id="start"
-            slot="marker"
-            hidden$="[[!_isSearchSet(action)]]"
-            map="[[map]]"
-            on-marker-changed="_destinationMarkerChanged"
-            latitude="[[_converteComma(searchFromLat)]]"
-            longitude="[[_converteComma(searchFromLng)]]">
-          </google-map-marker>
 
           <google-map-marker
             id="destination"
@@ -401,9 +415,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       </section>
 
       <div id="fabs" class$="fabs [[action]]">
-        <paper-fab mini icon="my-icons:location-disabled"></paper-fab>
+        <paper-fab mini icon="my-icons:location-disabled" on-tap=""></paper-fab>
         <paper-fab icon="my-icons:directions" on-tap="_direction"></paper-fab>
       </div>
+
+      <paper-toast id="toast" duration="10000">
+        <paper-button class="close" on-tap="_closeToast">Close</paper-button>
+        <paper-button class="ok" on-tap="_grantPosition">Enable</paper-button>
+      </paper-toast>
     </app-header-layout>
   </template>
 
@@ -413,6 +432,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       static get properties() {
         return {
+          action: {
+            observer: '_log'
+          },
           startAddress: {
             value: null
           },
@@ -431,11 +453,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           },
           searchLng: {
             type: Number,
-            value: 2.344312
+            value: 2.344312,
+            observer: '_log'
           },
           searchLat: {
             type: Number,
-            value: 48.87905
+            value: 48.87905,
+            observer: '_log'
           },
           fromSearchTerm: {
             type: String,
@@ -493,6 +517,18 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: Boolean,
             value: false
           },
+          toastMessages: {
+            type: Object,
+            value: () => {
+              return {
+                "enableGeo": "Please, enable geolocation to help us estimate your trip fair more accuratly regarding your current position."
+              };
+            }
+          },
+          toastMessage: {
+            type: String,
+            value: ""
+          },
 
           // Private
           _mapApiKey: {
@@ -532,6 +568,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
 
         this._getAndSetQuery();
+
+        // Force the toast to fit into this element
+        this.$.toast.fitInto = this;
+
+        this.toastMessage = this.toastMessages.enableGeo;
       }
 
       toggleDrawer() {
@@ -540,9 +581,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       setSearch(e) {
         console.info("Log : Map selected search", e.target.result);
-
+        console.log(this.gofrom, this.input);
         // Set the destination
-        if (!this.gofrom && this.input == "to") {
+        if (this.input == "to") {
           this.set('searchLng', e.target.result.longitude);
           this.set('searchLat', e.target.result.latitude);
           this.set('name', e.target.result.name);
@@ -556,19 +597,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       clear(e) {
-        // FIXME : Change arbitrary value
-        let lng = 37.77493;
-        let lat = -122.41942;
-        if (this.userGeoIP && this.userGeoIP.longitude && this.userGeoIP.latitude) {
-          lng = this.userGeoIP.longitude;
-          lat = this.userGeoIP.latitude;
-        }
-        console.log("Log clear location", lng, lat);
         console.info("Log : Clear selected search");
         this.set('searchTerm', "");
-        // FIXME : Default location
-        // this.set('searchLng', lng);
-        // this.set('searchLat', lat);
+        this.set('fromSearchTerm', "");
 
         // Clear search result list
         this.set('results', []);
@@ -587,7 +618,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           // Start ETA
           
           this.set('action', "eta");
-          this._direction();
+          // this._direction();
           return
         }
 
@@ -604,6 +635,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       getETATime(e, detail) {
+        console.log(detail.response);
         if (detail.response.status == "OK") {
           detail.response.routes.forEach((route) => {
             route.legs.forEach((leg) => {
@@ -615,6 +647,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
 
         return this.time = "N/A";
+      }
+
+      _closeToast() {
+        this.$.toast.close();
+      }
+
+      _grantPosition() {
+
       }
 
       _pushState(uri) {
@@ -649,29 +689,34 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           return;
 
         this._hideSuggested();
+
         this.set('action', "go");
         this._warn("==> State : action", this.action);
 
         if (this.destinationMarkerReady) {
           this.$.destination.marker.setVisible(this.action == "go");
-          this.$.start.marker.setVisible(this.action == "go");
         }
       }
 
       async _direction(e) {
         if (this.navigate && (this.geolocationGranted || this.fromPositionDefined)) {
           console.log("Log : Estimated travel time");
+
+          this.set("action", "eta");
+          this.$.destination.marker.setVisible(this.action == "go");
           this.set("startAddress", await new google.maps.LatLng(this.searchFromLat, this.searchFromLng));
           this.set("endAddress", await new google.maps.LatLng(this.searchLat, this.searchLng));
 
-          // console.log("Log startAddress :", this.startAddress);
-          // console.log("Log endAddress :", this.endAddress);
           return;
         }
 
         console.log("If not geolocation defined set start address");
         // Display the from search bar
         this.set("gofrom", true);
+
+        // Clear search result list
+        this.set('results', []);
+
         this._warn("==> State : gofrom", this.gofrom);
 
         // Hide the lower menu action icon
@@ -733,6 +778,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         let to = this._getQueryVariable('to');
         if (from) {
           this.set('fromSearchTerm', from);
+          this.set('gofrom', true);
+          let ul = this.$.historySearch.querySelector(".scrolling")
+          ul.classList.add("from-mode");
         }
         if (to) {
           this.set('searchTerm', to);
@@ -742,7 +790,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _getSearch(searchLng, searchLat, searchTerm, searchFromLng, searchFromLat, fromSearchTerm) {
         if (!this.gofrom) {
           if (searchTerm && searchLng && searchLat) {
-            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}?to=${searchTerm}`;
+            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}/?to=${searchTerm}`;
           }
         } else {
           if (searchTerm && searchLng && searchLat && searchFromLng && searchFromLat && fromSearchTerm) {
@@ -753,6 +801,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _routeActionChanged(action) {
+        // Do not set the action as the route change if we are already in ETA mode
+        // FIXME : handle return to GO mode
+        if (this.action == "eta" && action == "go")
+          return;
         this.action = action || 'search';
         if (this.action == "search") {
           this.clear();
@@ -763,6 +815,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _routeCoordonateChanged(longitude, latitude, destinationMarkerReady) {
+        if (!longitude && !latitude || !destinationMarkerReady)
+          return;
+
         this._warn("==> State : searchLng, searchLat, destinationMarkerReady", longitude, latitude, !!destinationMarkerReady);
         if (longitude) {
           this.set('searchLng', this._converteComma(longitude));
@@ -776,16 +831,24 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         // Clear search result list
         this.set('results', []);
 
+        //  When the destnation is selected, focus on the destination market
         if (this.destinationMarkerReady && this.searchTerm != "") {
+          if (this.action != "eta") {
+            console.log("not eta");
+            this.set('action', "go");
+          }
+
           // Use this method to focus on marker
           this.codeAddress();
 
           this.set("navigate", true);
-          this.set("action", "search");
         }
       }
 
       _routeFromCoordonateChanged(longitude, latitude, destinationMarkerReady) {
+        if (!longitude && !latitude || !destinationMarkerReady)
+          return;
+
         this._warn("==> State : searchFromLng, searchFromLat, destinationMarkerReady", longitude, latitude, !!destinationMarkerReady);
         if (longitude) {
           this.set('searchFromLng', this._converteComma(longitude));
@@ -799,19 +862,23 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         // Clear search result list
         this.set('results', []);
 
-          // Display the from search bar
-          this.set("gofrom", true);
-          // Hide drawer menu
-          this.$.arrow.classList.add('hidden');
-          this.$.menu.classList.add('hidden');
+        // Display the from search bar
+        // Not needed beacause _getAndSetQuery define it
+        // this.set("gofrom", true);
 
-        // if (this.destinationMarkerReady && this.fromSearchTerm != "") {
+        // Hide drawer menu
+        this.$.arrow.classList.add('hidden');
+        this.$.menu.classList.add('hidden');
+
         if (this.destinationMarkerReady && this.fromSearchTerm != "") {
+          console.log('action', "eta");
+          this.set('action', "eta");
+
           // Navigate
           this.set("navigate", true);
 
-          this.set("action", "go");
           this.set('fromPositionDefined', true);
+          this._direction();
         }
       }
 
@@ -826,8 +893,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _hide(e) {
         this._hideSuggested();
         this._hideGo();
+        this._hideETA();
 
         this.goExpend = 'expand-less';
+        this.ETAExpend = 'expand-less';
       }
 
       _displaySuggested(e, detail) {
@@ -870,7 +939,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       _displayETA() {
         console.info("Log : Display riders info");
-        console.log(this.$.eta);
         this.$.eta.classList.add('displayRider');
         this.search = true;
       }

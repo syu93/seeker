@@ -23,9 +23,17 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="my-icons.html">
 
 <link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
 
 <link rel="lazy-import" href="my-map.html">
 <link rel="lazy-import" href="my-view404.html">
+
+<!-- Dev no SW cache -->
+<link rel="import" href="my-offline.html">
+<link rel="import" href="my-view404.html">
+
+<link rel="import" href="pinnackl-offline-manager.html">
 
 <dom-module id="my-taxi">
   <template>
@@ -34,6 +42,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       --app-primary-color: #4285f4;
       --app-secondary-color: black;
       --light-text-color: #616161;
+      --toast-close-button: #e8e818;
 
       display: block;
       min-height: 100vh;
@@ -89,6 +98,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       color: black;
       font-weight: bold;
     }
+
+    paper-button.close {
+      color: var(--toast-close-button);
+    }
   </style>
 
   <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
@@ -98,8 +111,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
   data="{{routeData}}"
   tail="{{subroute}}"></app-route>
 
+  <pinnackl-offline-manager
+    on-connection="_connectionChanged"></pinnackl-offline-manager>
+
   <!-- Main drawer layout -->
-  <app-drawer-layout fullbleed narrow="{{narrow}}">
+  <app-drawer-layout fullbleed narrow="{{narrow}}" force-narrow>
     <!-- Drawer content -->
     <app-drawer id="drawer" slot="drawer" swipe-open="[[narrow]]">
       <app-toolbar>Menu</app-toolbar>
@@ -125,11 +141,18 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         attr-for-selected="name"
         fallback-selection="view404"
         role="main">
+        <!-- Offline dashboard -->
+        <my-offline name="offline"></my-offline>
+
         <my-map name="map" route="[[subroute]]" on-toggle-drawer="_toggleDrawer"></my-map>
         <my-account name="account"></my-account>
         <my-settings name="settings"></my-settings>
         <my-view404 name="view404"></my-view404>
       </iron-pages>
+
+      <paper-toast id="toast" text="" duration="8000">
+        <paper-button class="close">close</paper-button>
+      </paper-toast>
   </app-header-layout>
 </app-drawer-layout>
 </template>
@@ -157,6 +180,21 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         return [
         '_routePageChanged(routeData.page)',
         ];
+      }
+
+      ready() {
+        super.ready();
+
+        // Force the toast to fit into this element
+        this.$.toast.fitInto = this;
+      }
+
+      _connectionChanged(e, detail) {
+        console.log("Log : Connection changed : ", detail.state);
+        if (!detail.state) {
+          return this.set('page', 'offline');
+        }
+        return this.set('page', 'map');
       }
 
       _toggleDrawer(e) {

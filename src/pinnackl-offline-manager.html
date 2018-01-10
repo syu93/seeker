@@ -1,0 +1,60 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+
+<dom-module id="pinnackl-offline-manager">
+  <template>
+    <style>
+      :host {display: block;}
+    </style>
+  </template>
+  <h1>Plop</h1>
+  <script>
+    class PinnacklOfflineManager extends Polymer.LegacyElementMixin(Polymer.Element) {
+      static get is() { return 'pinnackl-offline-manager'; }
+      static get properties() {
+        return {
+          connected: {
+            type: Boolean
+          },
+          connectivity: {
+            type: String,
+            reflectToAttribute: true
+          }
+        };
+      }
+
+      ready() {
+        super.ready();
+
+        if (navigator.onLine) {
+          this.set('connectivity', 'online');
+          this.set('connected', true);
+          this.fire('connection', {state: true});
+        } else {
+          this.set('connectivity', 'offline');
+          this.set('connected', false);
+          this.fire('connection', {state: false});
+        }
+
+        window.addEventListener('offline', (e) => {
+          window.setTimeout(_ => {
+            // If while the time out, the navigator regain connectivity
+            // Abort the offline event
+            if (navigator.onLine)
+              return;
+            this.set('connected', false);
+            this.set('connectivity', 'offline');
+            this.fire('connection', {state: false});
+          }, 6000);
+        });
+
+        window.addEventListener('online', (e) => {
+          this.set('connected', true);
+          this.set('connectivity', 'online');
+          this.fire('connection', {state: true});
+        });
+      }
+    }
+
+    window.customElements.define(PinnacklOfflineManager.is, PinnacklOfflineManager);
+  </script>
+</dom-module>

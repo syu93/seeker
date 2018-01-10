@@ -1,0 +1,59 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+
+<dom-module id="user-geo">
+  <template>
+    <style>
+      :host {
+        display: none;
+      }
+    </style>
+
+    <!-- Load position on desktop if Geolocation is not granted -->
+    <iron-ajax
+       auto$="[[!geolocationGranted]]"
+       url="https://freegeoip.net/json/"
+       handle-as="json"
+       last-response="{{userGeoIP}}"></iron-ajax>
+  </template>
+
+  <script>
+    class UserGeo extends Polymer.Element {
+      static get is() { return 'user-geo'; }
+      static get properties() {
+        return {
+          position: {
+            type: Object,
+          },
+          latitude: {
+            type: Number
+          },
+          longitude: {
+            type: Number
+          }
+        };
+      }
+      ready() {
+        super.ready();
+
+        if ("geolocation" in navigator) {
+          /* geolocation is available */
+          console.log("Log : geolocation is available");
+
+          navigator.geolocation.getCurrentPosition((position) => {
+            // do_something(position.coords.latitude, position.coords.longitude);
+            // console.log(position.coords.latitude, position.coords.longitude);
+            this.set('position', position);
+            this.set('latitude', position.coords.latitude);
+            this.set('longitude', position.coords.longitude);
+          });
+        } else {
+          /* geolocation IS NOT available */
+          console.log("Log : geolocation IS NOT available");
+        }
+      }
+    }
+
+    window.customElements.define(UserGeo.is, UserGeo);
+  </script>
+</dom-module>

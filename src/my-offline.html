@@ -1,0 +1,28 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+
+<dom-module id="my-offline">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <h2>Hello [[prop1]]!</h2>
+  </template>
+
+  <script>
+    class MyOffline extends Polymer.Element {
+      static get is() { return 'my-offline'; }
+      static get properties() {
+        return {
+          prop1: {
+            type: String,
+            value: 'my-offline'
+          }
+        };
+      }
+    }
+
+    window.customElements.define(MyOffline.is, MyOffline);
+  </script>
+</dom-module>

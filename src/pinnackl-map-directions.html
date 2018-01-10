@@ -36,6 +36,7 @@ information on the API.
       on-api-load="_mapApiLoaded"
       maps-url="[[mapsUrl]]">
     </google-maps-api>
+    <div id="routes"></div>
   </template>
 
   <script>
@@ -117,6 +118,17 @@ information on the API.
            waypoints: {
              type: Array,
              value: function() { return []; }
+           },
+
+
+           /**
+            * Whether or not route alternatives should be provided. Optional.
+            * 
+            * @type boolean
+            */
+           provideRouteAlternatives: {
+            type: Boolean,
+            value: false
            },
 
           /**
@@ -201,7 +213,8 @@ information on the API.
           origin: this.startAddress,
           destination: this.endAddress,
           travelMode: this.travelMode,
-          waypoints: this.waypoints
+          waypoints: this.waypoints,
+          provideRouteAlternatives: this.provideRouteAlternatives
         };
         this.directionsService.route(request, function(response, status) {
           if (status == google.maps.DirectionsStatus.OK) {
