@@ -27,10 +27,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../bower_components/paper-button/paper-button.html">
 
 <link rel="lazy-import" href="my-map.html">
+<link rel="lazy-import" href="my-account.html">
+<link rel="lazy-import" href="my-settings.html">
 <link rel="lazy-import" href="my-view404.html">
 
 <!-- Dev no SW cache -->
 <link rel="import" href="my-offline.html">
+<link rel="import" href="my-account.html">
+<link rel="import" href="my-settings.html">
 <link rel="import" href="my-view404.html">
 
 <link rel="import" href="pinnackl-offline-manager.html">
@@ -102,6 +106,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     paper-button.close {
       color: var(--toast-close-button);
     }
+
+    [hidden] {
+      display: none;
+    }
   </style>
 
   <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
@@ -129,7 +137,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <app-header-layout>
       <app-header slot="header" condenses reveals effects="waterfall">
         <app-toolbar>
-          <a class="back-menu" href="/map/"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
+          <!-- menu burger -->
+          <paper-icon-button id="menu" class="menu" icon="my-icons:menu" hidden on-tap="_toggleDrawer"></paper-icon-button>
+          <a id="arrow" class="back-menu" href="/map/"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
           <div main-title>Account</div>
           <paper-icon-button icon="my-icons:more-vert"></paper-icon-button>
         </app-toolbar>
@@ -192,9 +202,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _connectionChanged(e, detail) {
         console.log("Log : Connection changed : ", detail.state);
         if (!detail.state) {
+          this.$.menu.hidden = false;
+          this.$.arrow.hidden = true;
+
+          this.$.toast.show();
+
           return this.set('page', 'offline');
         }
-        return this.set('page', 'map');
+        this.$.menu.hidden = true;
+        this.$.arrow.hidden = false;
+
+        let backOnlinePage = this.routeData.page || 'map';
+
+        return this.set('page', backOnlinePage);
       }
 
       _toggleDrawer(e) {
