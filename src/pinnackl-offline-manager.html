@@ -18,6 +18,10 @@
           connectivity: {
             type: String,
             reflectToAttribute: true
+          },
+          offlineTimeout: {
+            type: Number,
+            value: 3000
           }
         };
       }
@@ -26,32 +30,37 @@
         super.ready();
 
         if (navigator.onLine) {
-          this.set('connectivity', 'online');
-          this.set('connected', true);
-          this.fire('connection', {state: true});
+          this._changeConnectivity(true);
         } else {
-          this.set('connectivity', 'offline');
-          this.set('connected', false);
-          this.fire('connection', {state: false});
+          window.setTimeout(_ => {
+            this._changeConnectivity(false);
+          }, this.offlineTimeout);
         }
 
         window.addEventListener('offline', (e) => {
-          window.setTimeout(_ => {
-            // If while the time out, the navigator regain connectivity
-            // Abort the offline event
-            if (navigator.onLine)
-              return;
-            this.set('connected', false);
-            this.set('connectivity', 'offline');
-            this.fire('connection', {state: false});
-          }, 6000);
+          window.setTimeout(() => {
+            this._changeConnectivity(false);
+          }, this.offlineTimeout);
         });
 
         window.addEventListener('online', (e) => {
-          this.set('connected', true);
-          this.set('connectivity', 'online');
-          this.fire('connection', {state: true});
+          this._changeConnectivity(true);
         });
+      }
+
+      _changeConnectivity(state) {
+        if (!state) {
+          // If while the time out, the navigator regain connectivity
+          // Abort the offline event
+          if (navigator.onLine)
+            return;
+          this.set('connected', false);
+          this.set('connectivity', 'offline');
+          return this.fire('connection', {state: false});
+        }
+        this.set('connected', true);
+        this.set('connectivity', 'online');
+        return this.fire('connection', {state: true});
       }
     }
 
