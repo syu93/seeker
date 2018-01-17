@@ -244,6 +244,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       .hidden {
         visibility: hidden !important;
       }
+
+      @media (min-width: 768px) {
+        #riderInfo,
+        #eta {
+          width: 40%;
+          right: 0;
+        }
+      }
     </style>
 
     <app-route
@@ -294,7 +302,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             </paper-input></div>
             <template is="dom-if" if={{searchTerm}}><a href="/map/search" on-tap="clear"><paper-icon-button icon="my-icons:clear"></paper-icon-button></a></template>
             <a
-              href$="[[_getSearch(searchLng, searchLat, searchTerm, searchFromLng, searchFromLat,fromSearchTerm)]]"
+              href$="[[_getSearch(searchLng, searchLat, searchTerm, searchFromLng, searchFromLat,fromSearchTerm, nbRiders, nbLuggages)]]"
               on-tap="_search"><paper-icon-button icon="my-icons:search"></paper-icon-button></a>
         </app-toolbar>
       </app-header>
@@ -335,14 +343,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             <section>
               <h2>Number of passengers :</h2>
               <div class="range-section flex-horizontal">
-                <paper-slider type="range" min="1" max="5" immediate-value="{{nbRiders}}"></paper-slider>
+                <paper-slider type="range" min="1" max="5" immediate-value="{{nbRiders}}" value="{{nbRidersValue}}"></paper-slider>
                 <span>[[nbRiders]]</span>
               </div>
             </section>
             <section>
               <h2>Luggages :</h2>
               <div class="range-section flex-horizontal">
-                <paper-slider type="range" min="0" max="5" immediate-value="{{nbLuggages}}"></paper-slider>
+                <paper-slider type="range" min="0" max="5" immediate-value="{{nbLuggages}}" value="{{nbLuggagesValue}}"></paper-slider>
                 <span>[[nbLuggages]]</span>
               </div>
             </section>
@@ -433,7 +441,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       static get properties() {
         return {
           action: {
-            observer: '_log'
+            type: String
           },
           startAddress: {
             value: null
@@ -453,13 +461,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           },
           searchLng: {
             type: Number,
-            value: 2.344312,
-            observer: '_log'
+            value: 2.344312
           },
           searchLat: {
             type: Number,
-            value: 48.87905,
-            observer: '_log'
+            value: 48.87905
           },
           fromSearchTerm: {
             type: String,
@@ -615,10 +621,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       codeAddress() {
         if (this.searchLng && this.searchLat && this.searchFromLng && this.searchFromLat) {
-          // Start ETA
-          
           this.set('action', "eta");
-          // this._direction();
           return
         }
 
@@ -635,7 +638,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       getETATime(e, detail) {
-        console.log(detail.response);
         if (detail.response.status == "OK") {
           detail.response.routes.forEach((route) => {
             route.legs.forEach((leg) => {
@@ -699,6 +701,18 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       async _direction(e) {
+        // Update uri
+        let searchURI = this._getSearch(
+          this.searchLng, 
+          this.searchLat, 
+          this.searchTerm, 
+          this.searchFromLng, 
+          this.searchFromLat, 
+          this.fromSearchTerm, 
+          this.nbRiders, 
+          this.nbLuggages);
+        this._pushState(searchURI);
+
         if (this.navigate && (this.geolocationGranted || this.fromPositionDefined)) {
           console.log("Log : Estimated travel time");
 
@@ -776,6 +790,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _getAndSetQuery() {
         let from = this._getQueryVariable('from');
         let to = this._getQueryVariable('to');
+        let nbRiders = this._getQueryVariable('riders');
+        let nbLuggages = this._getQueryVariable('luggages');
+
         if (from) {
           this.set('fromSearchTerm', from);
           this.set('gofrom', true);
@@ -785,16 +802,23 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         if (to) {
           this.set('searchTerm', to);
         }
+        if (nbRiders) {
+          this.set('nbRidersValue', nbRiders);
+        }
+        if (nbLuggages) {
+          this.set('nbLuggagesValue', nbLuggages);
+        }
       }
 
-      _getSearch(searchLng, searchLat, searchTerm, searchFromLng, searchFromLat, fromSearchTerm) {
+      _getSearch(searchLng, searchLat, searchTerm, searchFromLng, searchFromLat, fromSearchTerm, nbRiders, nbLuggages) {
         if (!this.gofrom) {
           if (searchTerm && searchLng && searchLat) {
-            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}/?to=${searchTerm}`;
+            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}/?from=&to=${searchTerm}&riders=${nbRiders}&luggages=${nbLuggages}`;
           }
         } else {
           if (searchTerm && searchLng && searchLat && searchFromLng && searchFromLat && fromSearchTerm) {
-            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}/${this._converteDot(searchFromLng)}/${this._converteDot(searchFromLat)}/?from=${fromSearchTerm}&to=${searchTerm}`;
+            return `/map/go/${this._converteDot(searchLng)}/${this._converteDot(searchLat)}/${this._converteDot(searchFromLng)}/${this._converteDot(searchFromLat)}/?from=${fromSearchTerm}&to=${searchTerm}&riders=${nbRiders}&luggages=${nbLuggages}`;
+
           }
         }
         return "/map/";
@@ -834,7 +858,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         //  When the destnation is selected, focus on the destination market
         if (this.destinationMarkerReady && this.searchTerm != "") {
           if (this.action != "eta") {
-            console.log("not eta");
             this.set('action', "go");
           }
 
@@ -846,7 +869,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _routeFromCoordonateChanged(longitude, latitude, destinationMarkerReady) {
-        if (!longitude && !latitude || !destinationMarkerReady)
+        if (!longitude && !latitude) //  || !destinationMarkerReady
           return;
 
         this._warn("==> State : searchFromLng, searchFromLat, destinationMarkerReady", longitude, latitude, !!destinationMarkerReady);
@@ -871,7 +894,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.$.menu.classList.add('hidden');
 
         if (this.destinationMarkerReady && this.fromSearchTerm != "") {
-          console.log('action', "eta");
           this.set('action', "eta");
 
           // Navigate
