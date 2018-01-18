@@ -22,6 +22,10 @@
           offlineTimeout: {
             type: Number,
             value: 3000
+          },
+          ignoreFirstLoad: {
+            type: Boolean,
+            value: false
           }
         };
       }
@@ -33,18 +37,19 @@
           this._changeConnectivity(true);
         } else {
           window.setTimeout(_ => {
-            this._changeConnectivity(false);
+            if (!this.ignoreFirstLoad)
+              this._changeConnectivity(false);
           }, this.offlineTimeout);
         }
+
+        window.addEventListener('online', (e) => {
+          this._changeConnectivity(true);
+        });
 
         window.addEventListener('offline', (e) => {
           window.setTimeout(() => {
             this._changeConnectivity(false);
           }, this.offlineTimeout);
-        });
-
-        window.addEventListener('online', (e) => {
-          this._changeConnectivity(true);
         });
       }
 
