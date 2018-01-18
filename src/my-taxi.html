@@ -42,130 +42,133 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <dom-module id="my-taxi">
   <template>
     <style>
-    :host {
-      --app-primary-color: #4285f4;
-      --app-secondary-color: black;
-      --light-text-color: #616161;
-      --toast-close-button: #e8e818;
+      :host {
+        --app-primary-color: #4285f4;
+        --app-secondary-color: black;
+        --light-text-color: #616161;
+        --toast-close-button: #e8e818;
 
-      display: block;
-      min-height: 100vh;
-    }
+        display: block;
+        min-height: 100vh;
+      }
 
-    app-header {
-      visibility: hidden;
-    }
+      app-header {
+        visibility: hidden;
+      }
 
-    :host(:not([page="map"])) app-header {
-      visibility: visible;
-    }
+      :host(:not([page="map"])) app-header {
+        visibility: visible;
+      }
 
-    :host([page="map"]) iron-pages {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      min-height: 100vh;
-    }
+      :host([page="map"]) iron-pages {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        min-height: 100vh;
+      }
 
-    .back-menu {
-      text-decoration: none;
-      color: inherit;
-    }
+      .back-menu {
+        text-decoration: none;
+        color: inherit;
+      }
 
-    app-header {
-      color: #ffffff;
-      background-color: var(--app-primary-color);
-    }
+      app-header {
+        color: #ffffff;
+        background-color: var(--app-primary-color);
+      }
 
-    app-header paper-icon-button {
-      --paper-icon-button-ink-color: white;
-    }
+      app-header paper-icon-button {
+        --paper-icon-button-ink-color: white;
+      }
 
-    iron-pages {
-      min-height: 100%;
-    }
+      iron-pages {
+        min-height: 100%;
+      }
 
-    .drawer-list {
-      margin: 0 20px;
-    }
+      .drawer-list {
+        margin: 0 20px;
+      }
 
-    .drawer-list a {
-      display: block;
-      padding: 0 16px;
-      text-decoration: none;
-      color: var(--app-secondary-color);
-      line-height: 40px;
-    }
+      .drawer-list a {
+        display: block;
+        padding: 0 16px;
+        text-decoration: none;
+        color: var(--app-secondary-color);
+        line-height: 40px;
+      }
 
-    .drawer-list a.iron-selected {
-      color: black;
-      font-weight: bold;
-    }
+      .drawer-list a.iron-selected {
+        color: black;
+        font-weight: bold;
+      }
 
-    paper-button.close {
-      color: var(--toast-close-button);
-    }
+      paper-button.close {
+        color: var(--toast-close-button);
+      }
 
-    [hidden] {
-      display: none;
-    }
-  </style>
+      [hidden] {
+        display: none;
+      }
+    </style>
 
-  <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
-  <app-route
-  route="{{route}}"
-  pattern="[[rootPath]]:page"
-  data="{{routeData}}"
-  tail="{{subroute}}"></app-route>
+    <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
+    <app-route
+    route="{{route}}"
+    pattern="[[rootPath]]:page"
+    data="{{routeData}}"
+    tail="{{subroute}}"></app-route>
 
-  <pinnackl-offline-manager
-    on-connection="_connectionChanged"></pinnackl-offline-manager>
+    <!-- Handle network changed -->
+    <pinnackl-offline-manager
+      on-connection="_connectionChanged"
+      ignore-first-load>
+    </pinnackl-offline-manager>
 
-  <!-- Main drawer layout -->
-  <app-drawer-layout fullbleed narrow="{{narrow}}" force-narrow>
-    <!-- Drawer content -->
-    <app-drawer id="drawer" slot="drawer" swipe-open="[[narrow]]">
-      <app-toolbar>Menu</app-toolbar>
-      <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
-        <a name="map" href="[[rootPath]]map/">Map</a>
-        <a name="account" href="[[rootPath]]account">Account</a>
-        <a name="settings" href="[[rootPath]]settings">Settings</a>
-      </iron-selector>
-    </app-drawer>
+    <!-- Main drawer layout -->
+    <app-drawer-layout fullbleed narrow="{{narrow}}" force-narrow>
+      <!-- Drawer content -->
+      <app-drawer id="drawer" slot="drawer" swipe-open="[[narrow]]">
+        <app-toolbar>Menu</app-toolbar>
+        <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
+          <a name="map" href="[[rootPath]]map/">Map</a>
+          <a name="account" href="[[rootPath]]account">Account</a>
+          <a name="settings" href="[[rootPath]]settings">Settings</a>
+        </iron-selector>
+      </app-drawer>
 
-    <app-header-layout>
-      <app-header slot="header" condenses reveals effects="waterfall">
-        <app-toolbar>
-          <!-- menu burger -->
-          <paper-icon-button id="menu" class="menu" icon="my-icons:menu" hidden on-tap="_toggleDrawer"></paper-icon-button>
-          <a id="arrow" class="back-menu" href="/map/"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
-          <div main-title>Account</div>
-          <paper-icon-button icon="my-icons:more-vert"></paper-icon-button>
-        </app-toolbar>
-      </app-header>
+      <app-header-layout>
+        <app-header slot="header" condenses reveals effects="waterfall">
+          <app-toolbar>
+            <!-- menu burger -->
+            <paper-icon-button id="menu" class="menu" icon="my-icons:menu" hidden on-tap="_toggleDrawer"></paper-icon-button>
+            <a id="arrow" class="back-menu" href="/map/"><paper-icon-button icon="my-icons:arrow-back"></paper-icon-button></a>
+            <div main-title>[[_ucfirst(page)]]</div>
+            <paper-icon-button icon="my-icons:more-vert"></paper-icon-button>
+          </app-toolbar>
+        </app-header>
 
-      <!-- Main pages -->
-      <iron-pages
-        selected="[[page]]"
-        attr-for-selected="name"
-        fallback-selection="view404"
-        role="main">
-        <!-- Offline dashboard -->
-        <my-offline name="offline"></my-offline>
+        <!-- Main pages -->
+        <iron-pages
+          selected="[[page]]"
+          attr-for-selected="name"
+          fallback-selection="view404"
+          role="main">
+          <!-- Offline dashboard -->
+          <my-offline name="offline"></my-offline>
 
-        <my-map name="map" route="[[subroute]]" on-toggle-drawer="_toggleDrawer"></my-map>
-        <my-account name="account"></my-account>
-        <my-settings name="settings"></my-settings>
-        <my-view404 name="view404"></my-view404>
-      </iron-pages>
+          <my-map name="map" route="[[subroute]]" on-toggle-drawer="_toggleDrawer"></my-map>
+          <my-account name="account"></my-account>
+          <my-settings name="settings"></my-settings>
+          <my-view404 name="view404"></my-view404>
+        </iron-pages>
 
-      <paper-toast id="toast" text="" duration="8000">
-        <paper-button class="close">close</paper-button>
-      </paper-toast>
-  </app-header-layout>
-</app-drawer-layout>
-</template>
+        <paper-toast id="toast" text="" duration="6000">
+          <paper-button class="close" on-tap="closeToast">close</paper-button>
+        </paper-toast>
+      </app-header-layout>
+    </app-drawer-layout>
+  </template>
 
 <script>
   class MyTaxi extends Polymer.Element {
@@ -183,8 +186,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         // This shouldn't be neccessary, but the Analyzer isn't picking up
         // Polymer.Element#rootPath
         rootPath: String,
-        };
-      }
+        _properties: {
+          type: Object,
+          value: () => {return {};}
+        }
+      };
+    }
 
       static get observers() {
         return [
@@ -199,18 +206,38 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.$.toast.fitInto = this;
       }
 
+      closeToast() {
+        this.$.toast.close();
+      }
+
       _connectionChanged(e, detail) {
         console.log("Log : Connection changed : ", detail.state);
+
         if (!detail.state) {
           this.$.menu.hidden = false;
           this.$.arrow.hidden = true;
 
           this.$.toast.show();
+          this.$.toast.text = 'Network connection lost';
+
+          this._properties['--app-primary-color'] = '#9e9e9e';
+          this.updateStyles(this._properties);
 
           return this.set('page', 'offline');
         }
         this.$.menu.hidden = true;
         this.$.arrow.hidden = false;
+
+        if (this._properties['--app-primary-color']) {
+          this._properties['--app-primary-color'] = '#4285f4';
+          this.updateStyles(this._properties);
+
+          // Clear the --app-primary-color property
+          this._properties['--app-primary-color'] = null;
+
+          // Close toast if open
+          this.$.toast.close();
+        }
 
         let backOnlinePage = this.routeData.page || 'map';
 
@@ -244,6 +271,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       _showPage404() {
         this.page = 'view404';
+      }
+
+
+      _ucfirst(string) {
+        if (string)
+          return string.charAt(0).toUpperCase() + string.slice(1);
+        return '';
       }
     }
 
