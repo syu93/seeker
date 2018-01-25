@@ -121,6 +121,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
     <!-- Handle network changed -->
     <pinnackl-offline-manager
+      connectivity="{{connectivity}}"
       on-connection="_connectionChanged"
       ignore-first-load>
     </pinnackl-offline-manager>
@@ -249,8 +250,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _routePageChanged(page) {
+        // Prevent from accesssing the map if in offline mode
+        if (this.connectivity && this.connectivity == 'offline' && page == 'map') {
+          this.page = 'offline';
+          return this.$.drawer.close();
+        }
         // If no page was found in the route data, page will be an empty string.
-        // Deault to 'view1' in that case.
+        // Deault to 'map' in that case.
         this.page = page || 'map';
 
         // Close a non-persistent drawer when the page & route are changed.
