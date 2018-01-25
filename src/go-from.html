@@ -52,7 +52,7 @@
         placeholder="From"
         value="{{from}}"
         on-focus="_displaySuggested"></paper-input></div>
-      <template is="dom-if" if={{from}}><paper-icon-button icon="my-icons:clear"></paper-icon-button></template>
+      <template is="dom-if" if={{from}}><paper-icon-button icon="my-icons:clear" on-tap="clear"></paper-icon-button></template>
       <span class="spacer"></span>
     </app-toolbar>
   </template>
@@ -81,11 +81,16 @@
           from: {
             type: String,
             value: "",
+            notify: true
           },
           map: {
             type: Object,
           },
         };
+      }
+
+      clear() {
+        this.set('from', '');
       }
 
       _displaySuggested(e) {
