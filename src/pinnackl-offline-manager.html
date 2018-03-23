@@ -24,7 +24,58 @@
             type: Number,
             value: 3000
           },
+          /**
+           * Do not check for offline mode on first load
+           * in case a serice-worker is enabled
+           */
           ignoreFirstLoad: {
+            type: Boolean,
+            value: false
+          },
+          timesToTest: {
+            type: Number,
+            value: 5
+          },
+          threshold: {
+            type: Number,
+            value: 2000 // ms
+          },
+          refrech: {
+            type: Number,
+            value: 30000
+          },
+          payload: {
+            type: String,
+            value: "https://www.google.com/images/phd/px.gif"
+          },
+          isConnectedFast: {
+            type: String,
+          },
+          /**
+           * Prevent from sending ping request over the network
+           * to test the connectivity
+           */
+          noping: {
+            type: Boolean,
+            value: false
+          },
+          log: {
+            type: Boolean,
+            value: false
+          },
+
+          _intervalId: {
+            type: Object
+          },
+          _arrTimes: {
+            type: Array,
+            value: () => {return []}
+          },
+          _counter: {
+            type: Number,
+            value: 0
+          },
+          _abortFallback: {
             type: Boolean,
             value: false
           }
@@ -52,13 +103,84 @@
             this._changeConnectivity(false);
           }, this.offlineTimeout);
         });
+
+
+        this.dummyImage = new Image();
+
+        this._timeoutFallback();
+        this.checkLatency((avg) => {this._handleLatency(avg)});
+
+        this._intervalId = window.setInterval(() => {
+          this._reset();
+          this._timeoutFallback();
+          this.checkLatency((avg) => {this._handleLatency(avg)});
+        }, this.refrech);
       }
 
-      _changeConnectivity(state) {
+      /**
+       *  test and average time took to download image from server, called recursively timesToTest times
+       */
+      checkLatency(cb) {
+        if (this.noping) return;
+        let tStart = new Date().getTime();
+        if (this._counter < this.timesToTest -1) {
+          this.dummyImage.src = this.payload + '?t=' + tStart;
+
+          this.dummyImage.onload = () => {
+            this._abortFallback = true;
+            let tEnd = new Date().getTime();
+            let tTimeTook = tEnd-tStart;
+            this._arrTimes[this._counter] = tTimeTook;
+            this.checkLatency(cb);
+            this._counter++;
+          };
+        } else {
+          /** calculate average of array items then callback */
+          const sum = this._arrTimes.reduce(function(a, b) { return a + b; });
+          const avg = sum / this._arrTimes.length;
+          cb(avg);
+        }
+      }
+
+      /**
+       * Fallback timeout if request threshold exceed threshold 
+       */
+      _timeoutFallback() {
+        window.setTimeout(() => {
+          if (!this._abortFallback && this.connectivity != "offline" && !this.noping) {
+            if (this.log) console.log("connectivity is too slow, falling back on offline experience!");
+            this._changeConnectivity(false, true);
+            this._reset();
+          }
+        }, this.threshold +1);
+      }
+
+      /**
+       * Handle the connectivity test result
+       * and check if the threshold is exceeded
+       *
+       * @param      {number}  avg     The average request time
+       */
+      _handleLatency(avg) {
+        this.isConnectedFast = (avg <= this.threshold);
+        if (!this.isConnectedFast && this.connectivity != "offline") this._changeConnectivity(false, true);
+        else if (this.isConnectedFast && this.connectivity == "offline") this._changeConnectivity(true);
+        if (this.log) console.log("Time: " + (avg.toFixed(2)) + "ms - isConnectedFast? " + this.isConnectedFast);
+      }
+
+      /**
+       * Fire and event with the connectivity state
+       *
+       * @param      {<type>}  state   The state on connectivity
+       * @param      {string}  force   The force offline
+       * @return     {<type>}  { description_of_the_return_value }
+       */
+      _changeConnectivity(state, force) {
+        let forced = typeof force != "undefined" ? force : false;
         if (!state) {
           // If while the time out, the navigator regain connectivity
           // Abort the offline event
-          if (navigator.onLine)
+          if (navigator.onLine && !forced)
             return;
           this.set('connected', false);
           this.set('connectivity', 'offline');
@@ -67,6 +189,15 @@
         this.set('connected', true);
         this.set('connectivity', 'online');
         return this.fire('connection', {state: true});
+      }
+
+      /**
+       * Reset the checks
+       */
+      _reset() {
+        this.set('_arrTimes', []);
+        this.set('_counter', 0);
+        this.set('_abortFallback', false);
       }
     }
 
