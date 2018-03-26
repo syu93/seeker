@@ -1,0 +1,192 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+
+<dom-module id="pinnackl-geolocation">
+  <template>
+    <style>
+      :host {
+        display: none;
+      }
+
+      :host([open]) {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 900;
+        height: 100vh;
+        background-color: rgba(33, 33, 33, 0.6392156862745098);
+      }
+
+      section.modal {
+        width: 100%;
+        height: 100%;
+
+        display: -ms-flexbox;
+        display: -webkit-flex;
+        display: flex;
+        -webkit-flex-direction: row;
+        -ms-flex-direction: row;
+        flex-direction: row;
+        -webkit-flex-wrap: nowrap;
+        -ms-flex-wrap: nowrap;
+        flex-wrap: nowrap;
+        -webkit-justify-content: center;
+        -ms-flex-pack: center;
+        justify-content: center;
+        -webkit-align-content: stretch;
+        -ms-flex-line-pack: stretch;
+        align-content: stretch;
+        -webkit-align-items: center;
+        -ms-flex-align: center;
+        align-items: center;
+      }
+
+      dialog {
+        display: none;
+        border: none;
+        border-radius: 3px;
+        width: 80%;
+        user-select: none;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        box-shadow: 0 6px 10px 0 rgba(0, 0, 0, 0.14),
+                    0 1px 18px 0 rgba(0, 0, 0, 0.12),
+                    0 3px 5px -1px rgba(0, 0, 0, 0.4);
+      }
+
+      dialog[open] {
+        display: block;
+      }
+
+      paper-button {
+        color: var(--app-primary-color);
+      }
+
+      dialog h3 {
+        font-size: 1em;
+        color: var(--light-text-color);
+      }
+
+      section.actions {
+        text-align: right;
+      }
+
+      @media (min-width: 768px) {
+        dialog {
+          width: 30%;
+        }
+      }
+    </style>
+
+    <!-- Load position on desktop if Geolocation is not granted -->
+    <iron-ajax
+       auto$="[[!geolocationGranted]]"
+       url="https://freegeoip.net/json/"
+       handle-as="json"
+       last-response="{{userGeoIP}}"></iron-ajax>
+
+    <section class="modal">
+       <dialog id="favDialog" open$="[[open]]">
+        <h3>Please, enable geolocation to help us estimate your trip fair more accuratly regarding your current position.</h3>
+        <section class="actions">
+          <paper-button on-tap="_discardLocation">CANCEL</paper-button>
+          <paper-button on-tap="_grantLocation">OK</paper-button>
+        </section>
+      </dialog>
+    </section>
+  </template>
+
+  <script>
+    class PinnacklGeolocation extends Polymer.LegacyElementMixin(Polymer.Element) {
+      static get is() { return 'pinnackl-geolocation'; }
+      static get properties() {
+        return {
+          open: {
+            type: Boolean,
+            value: false,
+            reflectToAttribute: true
+          },
+          position: {
+            type: Object,
+          },
+          latitude: {
+            type: Number
+          },
+          longitude: {
+            type: Number
+          },
+          options: {
+            type: Object,
+            value: () => {
+              return {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+              };
+            }
+          }
+        };
+      }
+
+      ready() {
+        super.ready();
+
+        // Add click event listener on the geo element
+        // Need to add container element to handle click focus
+        // 
+        // Handle any click on the element and check if the target is
+        // the dialog element.
+        this.root.addEventListener('click', (e) => {
+          if (e.target.querySelectorAll('dialog').length)
+            this.set('open', false);
+        });
+
+        // Define if the sessionStorage was previoussly defined
+        const geolocationGranted = window.sessionStorage.getItem('geolocationGranted');
+        if (geolocationGranted == null || geolocationGranted == "false")
+          return window.sessionStorage.setItem('geolocationGranted', false);
+        this._grantLocation();
+      }
+
+      askForLocation() {
+        this.set('open', true);
+      }
+
+      _grantLocation() {
+        if ("geolocation" in navigator) {
+          /* geolocation is available */
+          navigator.geolocation.getCurrentPosition((position) => {
+            console.log(position.coords.latitude, position.coords.longitude);
+            this.set('position', position);
+            this.set('latitude', position.coords.latitude);
+            this.set('longitude', position.coords.longitude);
+
+            // Keep in session the granted auth in session
+            window.sessionStorage.setItem('geolocationGranted', true);
+            // Close the dialog
+            this.set('open', false);
+            this.fire('geolocation-permission', {granted: true});
+          }, (error) => {
+            console.log("Geolocation error !");
+            this.fire('geolocation-permission', {granted: false, error: error});
+            this.set('open', false);
+          });
+        } else {
+          /* geolocation IS NOT available */
+          console.log("Log : geolocation IS NOT available");
+          this.set('open', false);
+        }
+      }
+
+      _discardLocation() {
+        this.set('open', false);
+      }
+    }
+
+    window.customElements.define(PinnacklGeolocation.is, PinnacklGeolocation);
+  </script>
+</dom-module>
