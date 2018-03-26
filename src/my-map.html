@@ -23,7 +23,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 <link rel="import" href="pinnackl-map-directions.html">
 <link rel="import" href="go-from.html">
-<link rel="import" href="user-geo.html">
+<link rel="import" href="pinnackl-geolocation.html">
 
 <dom-module id="my-map">
   <template>
@@ -271,10 +271,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       data="{{routeFromCoorData}}"
       tail="{{subrouteFromCoor}}"></app-route>
 
-    <!-- <user-geo
-
-    ></user-geo> -->
-
     <!-- Main content -->
     <app-header-layout>
       <app-header slot="header" condenses reveals effects="waterfall">
@@ -358,6 +354,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           </div>
         </section>
 
+        <!-- ETA -->
         <section id="eta" class="ctn" name="eta">
           <div class="scrolling from-mode">
             <header>
@@ -424,15 +421,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       </section>
 
       <div id="fabs" class$="fabs [[action]]">
-        <paper-fab mini icon="my-icons:location-disabled" on-tap=""></paper-fab>
+        <paper-fab mini icon="[[_geolocationIcon]]" on-tap="_focusOnPosition"></paper-fab>
         <paper-fab icon="my-icons:directions" on-tap="_direction"></paper-fab>
       </div>
 
       <paper-toast id="toast" duration="10000">
         <paper-button class="close" on-tap="_closeToast">Close</paper-button>
-        <paper-button class="ok" on-tap="_grantPosition">Enable</paper-button>
       </paper-toast>
     </app-header-layout>
+    <pinnackl-geolocation id="geo"
+      on-geolocation-permission="geolocation"></pinnackl-geolocation>
   </template>
 
   <script>
@@ -514,6 +512,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             }
           },
           /*********************/
+          /* Geoloaction  */
+          /*********************/
+          _geolocationIcon: {
+            type: String,
+            value: "my-icons:location-disabled"
+          },
+          /*********************/
           /* Ride info section */
           /*********************/
           /**
@@ -587,7 +592,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: Object,
             value: () => {
               return {
-                "enableGeo": "Please, enable geolocation to help us estimate your trip fair more accuratly regarding your current position."
+                "geoError": "Sorry, we can't access your geolocation"
               };
             }
           },
@@ -677,6 +682,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
       }
 
+      geolocation(e, detail) {
+        if (!detail.granted) {
+          this.$.toast.text = this.toastMessages['geoError'];
+          return this.$.toast.open();
+        }
+
+        this.set('_geolocationIcon', 'my-icons:gps-fixed');
+        // FIXME: focus on current position
+      } 
+
       codeAddress() {
         if (this.searchLng && this.searchLat && this.searchFromLng && this.searchFromLat) {
           this.set('action', "eta");
@@ -713,8 +728,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.$.toast.close();
       }
 
-      _grantPosition() {
-
+      _focusOnPosition() {
+        this.$.geo.askForLocation();
       }
 
       _pushState(uri) {
