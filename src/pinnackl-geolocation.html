@@ -128,6 +128,9 @@
                 maximumAge: 0
               };
             }
+          },
+          geolocationGranted: {
+            type: Boolean
           }
         };
       }
@@ -153,7 +156,12 @@
       }
 
       askForLocation() {
-        this.set('open', true);
+        let geolocationGranted = window.sessionStorage.getItem('geolocationGranted');
+        if (geolocationGranted == "false") {
+          this.set('open', true);
+        } else {
+          this._grantLocation();
+        }
       }
 
       _grantLocation() {

@@ -312,7 +312,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           travel-mode="DRIVING"></pinnackl-map-directions>
           <!-- FIXME : Count the alternative ruoute -->
           <!-- FIXME : crate method to set routes -->
-        <!-- <google-map
+        <google-map
           map="{{map}}"
           markers="{{markers}}"
           latitude="[[_converteComma(searchLat)]]"
@@ -333,11 +333,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             longitude="[[_converteComma(searchLng)]]">
           </google-map-marker>
 
-        </google-map> -->
+        </google-map>
       </section>
 
       <div id="fabs" class$="fabs [[action]]">
-        <paper-fab mini icon="[[_geolocationIcon]]" on-tap="_focusOnPosition"></paper-fab>
+        <paper-fab
+          id="geolocationFab"
+          mini
+          icon="my-icons:location-disabled"
+          on-tap="_focusOnPosition"></paper-fab>
         <paper-fab icon="my-icons:directions" on-tap="_direction"></paper-fab>
       </div>
 
@@ -360,9 +364,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           /**
            * Search steps
            */
-          action: {
-            type: String
-          },
+          action: {type: String},
           /**
            * Determine if a search input is focused
            * in order to display menu burger or back arrow
@@ -374,15 +376,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           /**
            * Google map start address
            */
-          startAddress: {
-            value: null
-          },
+          startAddress: {value: null},
           /**
            * Google Map end address
            */
-          endAddress: {
-            value: null
-          },
+          endAddress: {value: null},
           
           /**
            * Where to
@@ -426,13 +424,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
               }
               return a;
             }
-          },
-          /*********************/
-          /* Geoloaction  */
-          /*********************/
-          _geolocationIcon: {
-            type: String,
-            value: "my-icons:location-disabled"
           },
           /*********************/
           /* Ride info section */
@@ -604,8 +595,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           return this.$.toast.open();
         }
 
-        this.set('_geolocationIcon', 'my-icons:gps-fixed');
+        this.$.geolocationFab.icon = "my-icons:gps-fixed";
         // FIXME: focus on current position
+        console.log("Focus on marker position");
       } 
 
       codeAddress() {
