@@ -22,6 +22,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="shared-styles.html">
 
 <link rel="import" href="pinnackl-map-directions.html">
+<link rel="import" href="my-search-result.html">
 <link rel="import" href="go-from.html">
 <link rel="import" href="pinnackl-geolocation.html">
 
@@ -89,85 +90,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         width: 100%;
       }
 
-      .ctn {
-        padding: 0 16px;
-        position: absolute;
-        width: 100%;
-        background: #fff;
-        z-index: 10;
-        box-sizing: border-box;
-        transition: transform .1s .1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
-      }
-
-      #historySearch {
-        padding: 0 16px;
-        height: 100vh;
-        position: absolute;
-        top: 100vh;
-        /*top: 0;*/ /* dev purpose */
-        bottom: 0;
-        left: 0;
-        right: 0;
-      }
-
       .displaySearch {transform: translate(0, -100vh);}
 
       .displayRider {transform: translate(0, -40vh);}
-
-      #historySearch .scrolling {
-        margin-top: 96px;
-        padding-bottom: 64px;
-        height: 87vh;
-        box-sizing: border-box;
-        overflow-y: scroll;
-      }
-
-      #historySearch .scrolling.from-mode {
-        margin-top: 160px;
-      }
-
-      #historySearch .tile {
-        cursor: pointer;
-        text-decoration: none;
-        color: var(--light-text-color);
-        width: 100%;
-        height: 64px;
-        background: rgba(245, 245, 245, 0.8);
-        margin-bottom: 8px;
-        border-radius: 5px;
-        box-sizing: border-box;
-        padding: 8px 12px;
-        display: flex;
-        justify-content: flex-start; /* align horizontal */
-        align-items: center; /* align vertical */
-      }
-
-      #historySearch .tile iron-icon {
-        pointer-events: none;
-        margin-right: 16px;
-        min-width: 24px;
-      }
-
-      #historySearch .tile span,
-      #historySearch .tile div {
-        display: block;
-        pointer-events: none;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      #historySearch .tile .name {
-        font-size: .8em;
-        font-weight: bold;
-        color: #424242;
-      }
-
-      ul {
-        list-style: none;
-        margin: 0;
-        padding: 1px;
-      }
 
       #riderInfo,
       #eta {
@@ -308,22 +233,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       <iron-pages attr-for-selected="name" selected="[[action]]" fallback-selection="search">
 
         <!-- Search -->
-        <section id="historySearch" class="ctn" name="search">
-          <ul class="scrolling">
-            <!-- <template is="dom-repeat" items={{searchHistory}}  -->
-            <template is="dom-repeat" items={{results}} 
-              as=result index-as=index>
-              <!-- [[_log(result)]] -->
-              <li class="tile" result="[[result]]"  tabindex="0" on-click="setSearch">
-                <iron-icon icon="my-icons:room"></iron-icon>
-                <div>
-                  <span class="name">[[result.name]]</span>
-                  <span class="address">[[result.formatted_address]]</span>
-                </div>
-              </li>
-            </template>
-          </ul>
-        </section>
+        <my-search-result 
+          id="historySearch"
+          class="ctn"
+          name="search"
+          results="[[results]]"
+          input="[[input]]"
+          on-set-search="setSearch"></my-search-result>
 
         <!-- Go -->
         <section id="riderInfo" class="ctn" name="go">
@@ -377,7 +293,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       </iron-pages>
 
       <!-- Map section -->
-      <section name="map">
+      <section name="map" style="display: none;">
         <google-map-search
           map="[[map]]"
           query="[[_query(searchTerm)]]"
@@ -396,7 +312,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           travel-mode="DRIVING"></pinnackl-map-directions>
           <!-- FIXME : Count the alternative ruoute -->
           <!-- FIXME : crate method to set routes -->
-        <google-map
+        <!-- <google-map
           map="{{map}}"
           markers="{{markers}}"
           latitude="[[_converteComma(searchLat)]]"
@@ -417,7 +333,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             longitude="[[_converteComma(searchLng)]]">
           </google-map-marker>
 
-        </google-map>
+        </google-map> -->
       </section>
 
       <div id="fabs" class$="fabs [[action]]">
@@ -650,19 +566,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.fire('toggle-drawer');
       }
 
-      setSearch(e) {
+      setSearch(e, detail) {
         // console.info("Log : Map selected search", e.target.result);
         // Set the destination
         if (this.input == "to") {
-          this.set('searchLng', e.target.result.longitude);
-          this.set('searchLat', e.target.result.latitude);
-          return this.set('searchTerm', e.target.result.formatted_address);
+          this.set('searchLng', detail.longitude);
+          this.set('searchLat', detail.latitude);
+          this.set('searchTerm', detail.formatted_address);
+        } else {
+          // Set the starting point
+          this.set('searchFromLng', detail.longitude);
+          this.set('searchFromLat', detail.latitude);
+          this.set('fromSearchTerm', detail.formatted_address);
         }
-
-        // Set the starting point
-        this.set('searchFromLng', e.target.result.longitude);
-        this.set('searchFromLat', e.target.result.latitude);
-        this.set('fromSearchTerm', e.target.result.formatted_address);
       }
 
       clear(e) {
@@ -876,7 +792,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         if (from) {
           this.set('fromSearchTerm', from);
           this.set('gofrom', true);
-          let ul = this.$.historySearch.querySelector(".scrolling")
+          let ul = this.$.historySearch.root.querySelector(".scrolling");
           ul.classList.add("from-mode");
         }
         if (to) {
@@ -1005,7 +921,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.search = true;
 
         if (detail && detail.from) {
-          let ul = this.$.historySearch.querySelector(".scrolling");
+          let ul = this.$.historySearch.root.querySelector(".scrolling");
           this.input = "from";
           return ul.classList.add("from-mode");
         }

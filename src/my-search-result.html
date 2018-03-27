@@ -1,0 +1,119 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="my-search-result">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+        background: rgba(245, 245, 245, 0.8);
+        padding: 0 16px;
+        height: 100vh;
+        position: absolute;
+        top: 100vh;
+        /*top: 0;*/ /* dev purpose */
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+
+      :host .scrolling {
+        margin-top: 96px;
+        padding-bottom: 64px;
+        height: 87vh;
+        box-sizing: border-box;
+        overflow-y: scroll;
+      }
+
+      :host .scrolling.from-mode {
+        margin-top: 160px;
+      }
+
+      :host .tile {
+        cursor: pointer;
+        text-decoration: none;
+        color: var(--light-text-color);
+        width: 100%;
+        height: 64px;
+        margin-bottom: 8px;
+        border-radius: 5px;
+        box-sizing: border-box;
+        padding: 8px 12px;
+        display: flex;
+        justify-content: flex-start; /* align horizontal */
+        align-items: center; /* align vertical */
+      }
+
+      :host .tile iron-icon {
+        pointer-events: none;
+        margin-right: 16px;
+        min-width: 24px;
+      }
+
+      :host .tile span,
+      :host .tile div {
+        display: block;
+        pointer-events: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      :host .tile .name {
+        font-size: .8em;
+        font-weight: bold;
+        color: #424242;
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 1px;
+      }
+    </style>
+    <section>
+      <ul class="scrolling">
+        <template is="dom-repeat" items={{results}} 
+          as=result index-as=index>
+          <!-- [[_log(result)]] -->
+          <li class="tile" result="[[result]]"  tabindex="0" on-click="setSearch">
+            <iron-icon icon="my-icons:room"></iron-icon>
+            <div>
+              <span class="name">[[result.name]]</span>
+              <span class="address">[[result.formatted_address]]</span>
+            </div>
+          </li>
+        </template>
+      </ul>
+    </section>
+  </template>
+
+  <script>
+    class MySearchResult extends Polymer.LegacyElementMixin(Polymer.Element) {
+      static get is() { return 'my-search-result'; }
+      static get properties() {
+        return {
+          results: {
+            type: Array,
+            value: function() {return [];}
+          },
+          input: {
+            type: String,
+            value: ""
+          },
+        };
+      }
+      setSearch(e) {
+        const search = {
+          longitude: e.target.result.longitude,
+          latitude: e.target.result.latitude,
+          formatted_address: e.target.result.formatted_address,
+        };
+        this.fire('set-search', search);
+      }
+
+    }
+
+    window.customElements.define(MySearchResult.is, MySearchResult);
+  </script>
+</dom-module>
