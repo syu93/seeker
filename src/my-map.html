@@ -293,7 +293,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       </iron-pages>
 
       <!-- Map section -->
-      <section name="map" style="display: none;">
+      <section name="map">
         <google-map-search
           map="[[map]]"
           query="[[_query(searchTerm)]]"
@@ -551,6 +551,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.$.toast.fitInto = this;
 
         this.toastMessage = this.toastMessages.enableGeo;
+        // FIXME : if not granted prompt for enabling geo
       }
 
       toggleDrawer() {
@@ -736,26 +737,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.codeAddress();
       }
 
-      _toggleDisplayGo(e) {
-        this.goExpend = (this.goExpend == 'expand-more') ? 'expand-less' : 'expand-more';
-
-        if (this.goExpend == 'expand-more') {
-          this._displayGo();
-        } else {
-          this._hideGo();
-        }
-      }
-
-      _toggleDisplayETA(e) {
-        this.ETAExpend = (this.ETAExpend == 'expand-more') ? 'expand-less' : 'expand-more';
-
-        if (this.ETAExpend == 'expand-more') {
-          this._displayETA();
-        } else {
-          this._hideETA();
-        }
-      }
-
       _getQueryVariable(value) {
         let query = window.location.search.substring(1);
         let vars = query.split('&');
@@ -869,10 +850,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         // Clear search result list
         this.set('results', []);
 
-        // Display the from search bar
-        // Not needed beacause _getAndSetQuery define it
-        // this.set("gofrom", true);
-
         if (this.gofrom) {
           this.$.arrow.classList.add('hidden');
           this.$.menu.classList.add('hidden');
@@ -896,6 +873,26 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       /**
        * Display UI control
        */
+
+      _toggleDisplayGo(e) {
+        this.goExpend = (this.goExpend == 'expand-more') ? 'expand-less' : 'expand-more';
+
+        if (this.goExpend == 'expand-more') {
+          this._displayGo();
+        } else {
+          this._hideGo();
+        }
+      }
+
+      _toggleDisplayETA(e) {
+        this.ETAExpend = (this.ETAExpend == 'expand-more') ? 'expand-less' : 'expand-more';
+
+        if (this.ETAExpend == 'expand-more') {
+          this._displayETA();
+        } else {
+          this._hideETA();
+        }
+      }
 
       _hide(e) {
         this._hideSuggested();
