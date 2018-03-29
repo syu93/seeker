@@ -487,6 +487,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           },
           /**
            * Define if we can start navigating
+           * Is define if the map and the destination marker is ready
            */
           navigate: {
             type: Boolean,
@@ -597,6 +598,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
 
         this.$.geolocationFab.icon = "my-icons:gps-fixed";
+        this.set('geolocationGranted', true);
         // FIXME: focus on current position
         console.log("Focus on marker position");
       } 
@@ -709,9 +711,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           return;
         }
 
-        console.log("If not geolocation defined set start address");
-        // Display the from search bar
         this.set("gofrom", true);
+        if (window.sessionStorage.getItem('geolocationGranted') == "true") {
+          this.set('searchFromLat', this.$.geo.latitude);
+          this.set('searchFromLng', this.$.geo.longitude);
+          this.set('fromSearchTerm', `${this.$.geo.latitude},${this.$.geo.longitude}`);
+        } else {
+          console.log("If not geolocation defined set start address");
+        }
 
         // Clear search result list
         this.set('results', []);
@@ -805,7 +812,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _routeCoordonateChanged(longitude, latitude, destinationMarkerReady) {
         if (!longitude && !latitude || !destinationMarkerReady)
           return;
-
         // this._warn("==> State : searchLng, searchLat, destinationMarkerReady", longitude, latitude, !!destinationMarkerReady);
         if (longitude) {
           this.set('searchLng', this._converteComma(longitude));
