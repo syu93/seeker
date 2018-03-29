@@ -168,7 +168,6 @@
         if ("geolocation" in navigator) {
           /* geolocation is available */
           navigator.geolocation.getCurrentPosition((position) => {
-            console.log(position.coords.latitude, position.coords.longitude);
             this.set('position', position);
             this.set('latitude', position.coords.latitude);
             this.set('longitude', position.coords.longitude);
@@ -179,13 +178,11 @@
             this.set('open', false);
             this.fire('geolocation-permission', {granted: true});
           }, (error) => {
-            console.log("Geolocation error !");
             this.fire('geolocation-permission', {granted: false, error: error});
             this.set('open', false);
           });
         } else {
           /* geolocation IS NOT available */
-          console.log("Log : geolocation IS NOT available");
           this.set('open', false);
         }
       }
