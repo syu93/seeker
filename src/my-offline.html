@@ -1,13 +1,15 @@
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="my-reservation.html">
+<link rel="import" href="shared-styles.html">
 
 <dom-module id="my-offline">
   <template>
-    <style>
+    <style include="shared-styles">
       :host {
         display: block;
       }
     </style>
-    <h2>Hello [[prop1]]!</h2>
+    <my-reservation></my-reservation>
   </template>
 
   <script>
@@ -15,10 +17,6 @@
       static get is() { return 'my-offline'; }
       static get properties() {
         return {
-          prop1: {
-            type: String,
-            value: 'my-offline'
-          }
         };
       }
     }
