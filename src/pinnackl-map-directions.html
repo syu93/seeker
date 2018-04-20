@@ -169,6 +169,11 @@ information on the API.
         ];
       }
 
+      resetRoute() {
+        if (this.directionsRenderer)
+          this.directionsRenderer.setDirections({routes: []});
+      }
+
       _mapApiLoaded() {
         this._route();
       }
