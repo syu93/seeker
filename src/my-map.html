@@ -302,6 +302,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         </google-map-search>
 
         <pinnackl-map-directions
+          id="direction"
           map="{{map}}"
           api-key="[[_mapApiKey]]"
           start-address="[[startAddress]]"
@@ -322,6 +323,13 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           styles="[[_styles]]"
           additional-map-options="[[_additionalMapOptions]]"
           api-key="[[_mapApiKey]]">
+
+          <google-map-marker
+            map="[[map]]"
+            slot="marker"
+            latitude="[[currentLat]]"
+            longitude="[[currentLng]]"
+          ></google-map-marker>
 
           <google-map-marker
             id="destination"
@@ -586,6 +594,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this.set('action', 'search');
         this.set("navigate", false);
 
+
+        this.$.direction.resetRoute();
+
         if (this.destinationMarkerReady) {
           this.$.destination.marker.setVisible(this.action == "go");
         }
@@ -599,6 +610,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         this.$.geolocationFab.icon = "my-icons:gps-fixed";
         this.set('geolocationGranted', true);
+        this.set('currentLat', this.$.geo.latitude);
+        this.set('currentLng', this.$.geo.longitude);
         // FIXME: focus on current position
         console.log("Focus on marker position");
       } 
@@ -624,6 +637,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       getETATime(e, detail) {
         if (detail.response.status == "OK") {
           detail.response.routes.forEach((route) => {
+            // FIXME : get multiple legs
             route.legs.forEach((leg) => {
               this.duration = leg.duration.text;
               this.distance = leg.distance.text;
@@ -688,6 +702,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         if (!this.searchTerm)
           return;
 
+        if (this.geolocationGranted) {
+          this.set('searchFromLat', this.$.geo.latitude);
+          this.set('searchFromLng', this.$.geo.longitude);
+          this.set('fromSearchTerm', `${this.$.geo.latitude},${this.$.geo.longitude}`);
+        }
+
         // Update uri
         let searchURI = this._getSearch(
           this.searchLng, 
@@ -701,24 +721,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         this._pushState(searchURI);
 
         if (this.navigate && (this.geolocationGranted || this.fromPositionDefined)) {
-          // console.log("Log : Estimated travel time");
 
           this.set("action", "eta");
           this.$.destination.marker.setVisible(this.action == "go");
           this.set("startAddress", await new google.maps.LatLng(this.searchFromLat, this.searchFromLng));
           this.set("endAddress", await new google.maps.LatLng(this.searchLat, this.searchLng));
-
-          return;
         }
 
         this.set("gofrom", true);
-        if (window.sessionStorage.getItem('geolocationGranted') == "true") {
-          this.set('searchFromLat', this.$.geo.latitude);
-          this.set('searchFromLng', this.$.geo.longitude);
-          this.set('fromSearchTerm', `${this.$.geo.latitude},${this.$.geo.longitude}`);
-        } else {
-          console.log("If not geolocation defined set start address");
-        }
 
         // Clear search result list
         this.set('results', []);
@@ -810,8 +820,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
 
       _routeCoordonateChanged(longitude, latitude, destinationMarkerReady) {
-        if (!longitude && !latitude || !destinationMarkerReady)
+        if (!longitude && !latitude || !destinationMarkerReady) {
           return;
+        }
         // this._warn("==> State : searchLng, searchLat, destinationMarkerReady", longitude, latitude, !!destinationMarkerReady);
         if (longitude) {
           this.set('searchLng', this._converteComma(longitude));
